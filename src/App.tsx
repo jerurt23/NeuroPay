@@ -13,6 +13,7 @@ import {
   INITIAL_BUDGETS,
   INITIAL_TABS,
   INITIAL_SETTINGS,
+  INITIAL_WIDGETS,
 } from './data/initialData.ts';
 import {
   Transaction,
@@ -20,6 +21,7 @@ import {
   TabConfig,
   UserSettings,
   CategoryInfo,
+  WidgetConfig,
 } from './types/index.ts';
 
 export default function App() {
@@ -42,7 +44,18 @@ export default function App() {
 
   const [categories] = useState<CategoryInfo[]>(INITIAL_CATEGORIES);
   const [budgets, setBudgets] = useState<Budget[]>(INITIAL_BUDGETS);
-  const [tabs, setTabs] = useState<TabConfig[]>(INITIAL_TABS);
+  const [tabs, setTabs] = useState<TabConfig[]>(() => {
+    const saved = localStorage.getItem('neuropay_tabs');
+    if (saved) { try { return JSON.parse(saved); } catch (_) {} }
+    return INITIAL_TABS;
+  });
+
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
+    const saved = localStorage.getItem('neuropay_widgets');
+    if (saved) { try { return JSON.parse(saved); } catch (_) {} }
+    return INITIAL_WIDGETS;
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState(false);
 
@@ -53,6 +66,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('neuropay_transactions', JSON.stringify(transactions));
   }, [transactions]);
+
+  useEffect(() => {
+    localStorage.setItem('neuropay_tabs', JSON.stringify(tabs));
+  }, [tabs]);
+
+  useEffect(() => {
+    localStorage.setItem('neuropay_widgets', JSON.stringify(widgets));
+  }, [widgets]);
 
   const handleLogin = (name: string, email: string) => {
     setSettings((prev) => ({ ...prev, userName: name, userEmail: email }));
@@ -118,6 +139,10 @@ export default function App() {
           <SettingsView
             settings={settings}
             onUpdateSettings={(newS) => setSettings((s) => ({ ...s, ...newS }))}
+            tabs={tabs}
+            onUpdateTabs={setTabs}
+            widgets={widgets}
+            onUpdateWidgets={setWidgets}
             onLogout={handleLogout}
           />
         )}
