@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HeaderNav } from './components/HeaderNav.tsx';
 import { TabBar } from './components/TabBar.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
+import { RegistroView } from './components/RegistroView.tsx';
 import { TransportRoutesView } from './components/TransportRoutesView.tsx';
 import { BudgetView } from './components/BudgetView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
@@ -106,10 +107,12 @@ export default function App() {
         )}
 
         {activeTab === 'registro' && (
-          <div className="p-8 rounded-2xl bg-white border border-zinc-200 text-center">
-            <h2 className="text-lg font-bold text-zinc-900">Registro</h2>
-            <p className="text-sm text-zinc-500 mt-2">Próximamente</p>
-          </div>
+          <RegistroView
+            transactions={transactions}
+            categories={categories}
+            currencySymbol={settings.currencySymbol}
+            onSave={handleSaveTransaction}
+          />
         )}
 
         {activeTab === 'routes' && (
