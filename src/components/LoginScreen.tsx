@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { UserPlus, LogIn } from 'lucide-react';
+import { auth } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 interface LoginScreenProps {
-  onLogin: (name: string, email: string) => void;
+  onLogin: (user: { uid: string; displayName: string; email: string }) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
@@ -10,13 +12,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegister && name.trim() && email.trim() && password.trim()) {
-      onLogin(name.trim(), email.trim());
-    } else if (!isRegister && email.trim() && password.trim()) {
-      onLogin(email.split('@')[0], email.trim());
+    setError(null);
+    setLoading(true);
+    try {
+      if (isRegister) {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name.trim()) {
+          await updateProfile(cred.user, { displayName: name.trim() });
+        }
+        onLogin({ uid: cred.user.uid, displayName: name.trim() || email.split('@')[0], email });
+      } else {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        onLogin({ uid: cred.user.uid, displayName: cred.user.displayName || email.split('@')[0], email });
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Error de autenticación');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,6 +52,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <h2 className="text-lg font-bold text-zinc-900">
             {isRegister ? 'Crear cuenta' : 'Iniciar sesión'}
           </h2>
+
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs">
+              {error}
+            </div>
+          )}
 
           {isRegister && (
             <div>
@@ -57,6 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
               className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              required
             />
           </div>
 
@@ -68,15 +92,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              required
+              minLength={6}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
           >
             {isRegister ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-            {isRegister ? 'Registrarme' : 'Entrar'}
+            {loading ? 'Procesando...' : isRegister ? 'Registrarme' : 'Entrar'}
           </button>
         </form>
 

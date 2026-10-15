@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HeaderNav } from './components/HeaderNav.tsx';
 import { TabBar } from './components/TabBar.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
@@ -24,75 +24,99 @@ import {
   CategoryInfo,
   WidgetConfig,
 } from './types/index.ts';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [settings, setSettings] = useState<UserSettings>(() => {
-    const saved = localStorage.getItem('neuropay_settings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (_) {}
-    }
-    return INITIAL_SETTINGS;
-  });
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('neuropay_transactions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (_) {}
-    }
-    return INITIAL_TRANSACTIONS;
-  });
-
+  const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories] = useState<CategoryInfo[]>(INITIAL_CATEGORIES);
-  const [budgets, setBudgets] = useState<Budget[]>(INITIAL_BUDGETS);
-  const [tabs, setTabs] = useState<TabConfig[]>(() => {
-    const saved = localStorage.getItem('neuropay_tabs');
-    if (saved) { try { return JSON.parse(saved); } catch (_) {} }
-    return INITIAL_TABS;
-  });
-
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
-    const saved = localStorage.getItem('neuropay_widgets');
-    if (saved) { try { return JSON.parse(saved); } catch (_) {} }
-    return INITIAL_WIDGETS;
-  });
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [tabs, setTabs] = useState<TabConfig[]>(INITIAL_TABS);
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(INITIAL_WIDGETS);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [currentMasterPassword, setCurrentMasterPassword] = useState('AppleSecure2026!');
+
+  const isRemoteSync = useRef(false);
 
   useEffect(() => {
-    localStorage.setItem('neuropay_settings', JSON.stringify(settings));
-  }, [settings]);
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      setAuthReady(true);
+    });
+    return () => unsub();
+  }, []);
 
+  // Load + subscribe user doc
   useEffect(() => {
-    localStorage.setItem('neuropay_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    if (!firebaseUser) return;
+    const ref = doc(db, 'users', firebaseUser.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      isRemoteSync.current = true;
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
+        setTransactions(data.transactions || []);
+        setBudgets(data.budgets || []);
+        if (data.tabs) setTabs(data.tabs);
+        if (data.widgets) setWidgets(data.widgets);
+      } else {
+        // create default
+        setDoc(ref, {
+          settings: INITIAL_SETTINGS,
+          transactions: [],
+          budgets: [],
+          tabs: INITIAL_TABS,
+          widgets: INITIAL_WIDGETS,
+        });
+      }
+      setTimeout(() => (isRemoteSync.current = false), 0);
+    });
+    return () => unsub();
+  }, [firebaseUser]);
 
-  useEffect(() => {
-    localStorage.setItem('neuropay_tabs', JSON.stringify(tabs));
-  }, [tabs]);
-
-  useEffect(() => {
-    localStorage.setItem('neuropay_widgets', JSON.stringify(widgets));
-  }, [widgets]);
-
-  const handleLogin = (name: string, email: string) => {
-    setSettings((prev) => ({ ...prev, userName: name, userEmail: email }));
-    setIsAuthenticated(true);
+  // Persist on changes (skip when remote sync)
+  const persist = async (patch: any) => {
+    if (!firebaseUser || isRemoteSync.current) return;
+    const ref = doc(db, 'users', firebaseUser.uid);
+    await setDoc(ref, patch, { merge: true });
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  useEffect(() => { if (!isRemoteSync.current) persist({ settings }); }, [settings]);
+  useEffect(() => { if (!isRemoteSync.current) persist({ transactions }); }, [transactions]);
+  useEffect(() => { if (!isRemoteSync.current) persist({ budgets }); }, [budgets]);
+  useEffect(() => { if (!isRemoteSync.current) persist({ tabs }); }, [tabs]);
+  useEffect(() => { if (!isRemoteSync.current) persist({ widgets }); }, [widgets]);
+
+  const handleLogin = (user: { uid: string; displayName: string; email: string }) => {
+    setSettings((prev) => ({ ...prev, userName: user.displayName, userEmail: user.email }));
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setFirebaseUser(null);
     setSettings(INITIAL_SETTINGS);
+    setTransactions([]);
+    setBudgets([]);
+    setTabs(INITIAL_TABS);
+    setWidgets(INITIAL_WIDGETS);
   };
 
   const handleSaveTransaction = (newTx: Transaction) => {
     setTransactions((prev) => [newTx, ...prev]);
   };
 
-  if (!isAuthenticated) {
+  if (!authReady) {
+    return <div className="min-h-screen flex items-center justify-center text-zinc-500">Cargando...</div>;
+  }
+
+  if (!firebaseUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
@@ -104,7 +128,7 @@ export default function App() {
         unreadCount={0}
         onOpenNotifications={() => {}}
         onOpenProfile={() => setIsProfileOpen(true)}
-        userName={settings.userName}
+        userName={settings.userName || firebaseUser.displayName || ''}
         userPhoto={settings.userPhoto}
       />
 
@@ -126,7 +150,7 @@ export default function App() {
             transactions={transactions}
             categories={categories}
             currencySymbol={settings.currencySymbol}
-            verifyPassword={(p) => p === currentMasterPassword}
+            verifyPassword={(p) => p === 'AppleSecure2026!'}
             onSave={handleSaveTransaction}
           />
         )}
@@ -174,11 +198,12 @@ export default function App() {
         open={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         settings={settings}
-        currentPassword={currentMasterPassword}
+        currentPassword={settings.accountPassword || 'AppleSecure2026!'}
         onUpdateSettings={(s) => setSettings((prev) => ({ ...prev, ...s }))}
         onChangePassword={(oldP, newP) => {
-          if (oldP !== currentMasterPassword) return false;
-          setCurrentMasterPassword(newP);
+          const current = settings.accountPassword || 'AppleSecure2026!';
+          if (oldP !== current) return false;
+          setSettings((prev) => ({ ...prev, accountPassword: newP }));
           return true;
         }}
         onLogout={handleLogout}
