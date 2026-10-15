@@ -129,6 +129,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       category = 'medicina';
     } else {
       itemName = customFoodTitle || 'Registro';
+      category = 'otro';
     }
 
     const newItem: PendingItem = {
@@ -705,8 +706,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {/* Purchase History */}
       <div className="pt-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-zinc-900">Historial de Compras</h3>
-          <span className="text-xs text-zinc-500">{transactions.length} registros</span>
+          <h3 className="font-bold text-zinc-900">
+            Historial
+            {mainCategory === 'comida' && ' de Comida'}
+            {mainCategory === 'transporte' && ' de Transporte'}
+            {mainCategory === 'medicina' && ' de Medicina'}
+            {mainCategory === 'nueva' && ' General'}
+          </h3>
+          <span className="text-xs text-zinc-500">
+            {transactions.filter((tx) => tx.category === mainCategory).length} registros
+          </span>
         </div>
         <div className="divide-y divide-zinc-100">
           {transactions
