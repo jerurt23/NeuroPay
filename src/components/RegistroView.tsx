@@ -709,7 +709,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <span className="text-xs text-zinc-500">{transactions.length} registros</span>
         </div>
         <div className="divide-y divide-zinc-100">
-          {transactions.map((tx) => (
+          {transactions
+            .filter((tx) => tx.category === mainCategory)
+            .map((tx) => (
             <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div
@@ -730,8 +732,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </span>
             </div>
           ))}
-          {transactions.length === 0 && (
-            <p className="py-8 text-center text-sm text-zinc-400">Sin registros aún</p>
+          {transactions.filter((tx) => tx.category === mainCategory).length === 0 && (
+            <p className="py-8 text-center text-sm text-zinc-400">Sin registros de {mainCategory} aún</p>
           )}
         </div>
       </div>
