@@ -23,7 +23,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ notification, onDi
       {notification ? (
         <div
           onClick={onDismiss}
-          className="pointer-events-auto cursor-pointer flex items-center gap-3 px-4 py-2.5 bg-black/90 dark:bg-black/95 text-white rounded-full shadow-2xl border border-white/15 backdrop-blur-2xl min-w-[280px] max-w-md mx-auto transform animate-in fade-in slide-in-from-top-2 duration-300 scale-100 hover:scale-[1.02] active:scale-95 transition-transform"
+          className="pointer-events-auto cursor-pointer flex items-center gap-3 px-4 py-2.5 bg-black/90 text-white rounded-full shadow-2xl border border-white/15 backdrop-blur-2xl min-w-[280px] max-w-md mx-auto transform animate-in fade-in slide-in-from-top-2 duration-300 scale-100 hover:scale-[1.02] active:scale-95 transition-transform"
         >
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
             {notification.type === 'bank' && <Bell className="w-4 h-4 text-amber-400 animate-pulse" />}

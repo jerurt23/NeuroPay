@@ -364,7 +364,7 @@ export const INITIAL_SETTINGS: UserSettings = {
   userName: 'Jeremy Urteaga',
   userEmail: 'p.jeremyurteaga23@gmail.com',
   currencySymbol: '$',
-  theme: 'auto',
+  theme: 'light',
   trueTone: true,
   e2eeEnabled: true,
   pushNotifications: true,
