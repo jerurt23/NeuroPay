@@ -203,9 +203,9 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
  {/* New Budget Modal */}
  {isModalOpen && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+ <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl">
  <div
- className="w-full max-w-md bg-white900 rounded-3xl p-6 border border-zinc-200800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200"
+ className="w-full max-w-md bg-white/80 rounded-3xl p-6 border border-white/60 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200 backdrop-blur-xl"
  >
  <div className="flex items-center justify-between">
  <h3 className="text-base font-bold text-zinc-900100">
