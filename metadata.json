@@ -1,0 +1,8 @@
+{
+  "name": "SynapsePay - Histórico Inteligente & Red Neuronal Financiera",
+  "description": "Control de gastos y compras con estética iOS, red neuronal interactiva, seguimiento de rutas de transporte punto a punto, sincronización de alertas bancarias por correo y cifrado E2EE.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
