@@ -1,62 +1,14 @@
 import { BankEmail, Budget, CategoryInfo, TabConfig, Transaction, UserSettings, WidgetConfig } from '../types/index.ts';
 
 export const INITIAL_CATEGORIES: CategoryInfo[] = [
-  {
-    id: 'comida',
-    name: 'Comida & Alimentos',
-    icon: 'Utensils',
-    color: '#FF9500',
-    description: 'Restaurantes, supermercados, delivery y cafeterías',
-  },
-  {
-    id: 'medicina',
-    name: 'Medicina & Salud',
-    icon: 'Pill',
-    color: '#FF2D55',
-    description: 'Farmacias, recetas médicas, clínicas y laboratorios',
-  },
-  {
-    id: 'transporte',
-    name: 'Transporte & Movilidad',
-    icon: 'Car',
-    color: '#0A84FF',
-    description: 'Rutas punto a punto, taxis, metro, buses y gasolina',
-  },
-  {
-    id: 'servicios',
-    name: 'Servicios & Cuentas',
-    icon: 'Zap',
-    color: '#5E5CE6',
-    description: 'Luz, agua, internet, telefonía y suscripciones',
-  },
-  {
-    id: 'hogar',
-    name: 'Hogar & Mantenimiento',
-    icon: 'Home',
-    color: '#30D158',
-    description: 'Muebles, ferretería y artículos para la casa',
-  },
-  {
-    id: 'ocio',
-    name: 'Ocio & Entretenimiento',
-    icon: 'Film',
-    color: '#BF5AF2',
-    description: 'Cine, streaming, videojuegos y salidas recreativas',
-  },
-  {
-    id: 'tecnologia',
-    name: 'Tecnología & Gadgets',
-    icon: 'Smartphone',
-    color: '#64D2FF',
-    description: 'Electrónica, accesorios y hardware',
-  },
-  {
-    id: 'otro',
-    name: 'Otros Gastos',
-    icon: 'MoreHorizontal',
-    color: '#8E8E93',
-    description: 'Gastos generales y diversos',
-  },
+  { id: 'comida', name: 'Comida & Alimentos', icon: 'Utensils', color: '#FF9500', description: 'Restaurantes, supermercados, delivery y cafeterías' },
+  { id: 'medicina', name: 'Medicina & Salud', icon: 'Pill', color: '#FF2D55', description: 'Farmacias, recetas médicas, clínicas y laboratorios' },
+  { id: 'transporte', name: 'Transporte & Movilidad', icon: 'Car', color: '#0A84FF', description: 'Rutas punto a punto, taxis, metro, buses y gasolina' },
+  { id: 'servicios', name: 'Servicios & Cuentas', icon: 'Zap', color: '#5E5CE6', description: 'Luz, agua, internet, telefonía y suscripciones' },
+  { id: 'hogar', name: 'Hogar & Mantenimiento', icon: 'Home', color: '#30D158', description: 'Muebles, ferretería y artículos para la casa' },
+  { id: 'ocio', name: 'Ocio & Entretenimiento', icon: 'Film', color: '#BF5AF2', description: 'Cine, streaming, videojuegos y salidas recreativas' },
+  { id: 'tecnologia', name: 'Tecnología & Gadgets', icon: 'Smartphone', color: '#64D2FF', description: 'Electrónica, accesorios y hardware' },
+  { id: 'otro', name: 'Otros Gastos', icon: 'MoreHorizontal', color: '#8E8E93', description: 'Gastos generales y diversos' },
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
@@ -71,14 +23,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'banca_movil',
     notes: 'Traslado a reunión ejecutiva',
     tags: ['reunion', 'trabajo'],
-    transportDetails: {
-      origin: 'Av. Larco 1020, Miraflores',
-      destination: 'Av. Canaval y Moreyra, San Isidro',
-      distanceKm: 6.2,
-      transportMode: 'uber_cabify',
-      returnTrip: false,
-    },
-    synapseWeight: 45,
+    transportDetails: { origin: 'Av. Larco 1020, Miraflores', destination: 'Av. Canaval y Moreyra, San Isidro', distanceKm: 6.2, transportMode: 'uber_cabify', returnTrip: false },
   },
   {
     id: 'tx-002',
@@ -91,12 +36,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'tarjeta_debito',
     notes: 'Receta por cuadro gripal',
     tags: ['salud', 'receta'],
-    medicineDetails: {
-      pharmacy: 'InkaFarma Central',
-      prescriptionNeeded: true,
-      doseNotes: 'Amoxicilina 500mg cada 8 horas',
-    },
-    synapseWeight: 75,
+    medicineDetails: { pharmacy: 'InkaFarma Central', prescriptionNeeded: true, doseNotes: 'Amoxicilina 500mg cada 8 horas' },
   },
   {
     id: 'tx-003',
@@ -109,11 +49,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'tarjeta_credito',
     notes: 'Frutas, verduras, proteínas',
     tags: ['despensa', 'mercado'],
-    foodDetails: {
-      placeType: 'supermercado',
-      meal: 'almuerzo',
-    },
-    synapseWeight: 95,
+    foodDetails: { placeType: 'supermercado', meal: 'almuerzo' },
   },
   {
     id: 'tx-004',
@@ -125,14 +61,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     time: '12:10',
     paymentMethod: 'tarjeta_debito',
     notes: 'Recarga tarjeta metro',
-    transportDetails: {
-      origin: 'Estación La Cultura',
-      destination: 'Estación Angamos',
-      distanceKm: 4.8,
-      transportMode: 'metro',
-      returnTrip: true,
-    },
-    synapseWeight: 20,
+    transportDetails: { origin: 'Estación La Cultura', destination: 'Estación Angamos', distanceKm: 4.8, transportMode: 'metro', returnTrip: true },
   },
   {
     id: 'tx-005',
@@ -145,11 +74,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'tarjeta_credito',
     notes: 'Almuerzo con colegas',
     tags: ['gourmet', 'networking'],
-    foodDetails: {
-      placeType: 'restaurante',
-      meal: 'almuerzo',
-    },
-    synapseWeight: 80,
+    foodDetails: { placeType: 'restaurante', meal: 'almuerzo' },
   },
   {
     id: 'tx-006',
@@ -162,7 +87,6 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'transferencia',
     notes: 'Depósito de nómina',
     tags: ['sueldo', 'ingreso'],
-    synapseWeight: 100,
   },
   {
     id: 'tx-007',
@@ -175,14 +99,7 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     paymentMethod: 'banca_movil',
     notes: 'Viaje para vuelo de negocios',
     tags: ['viaje', 'aeropuerto'],
-    transportDetails: {
-      origin: 'San Borja Norte 450',
-      destination: 'Aeropuerto Jorge Chávez',
-      distanceKm: 24.5,
-      transportMode: 'uber_cabify',
-      returnTrip: false,
-    },
-    synapseWeight: 60,
+    transportDetails: { origin: 'San Borja Norte 450', destination: 'Aeropuerto Jorge Chávez', distanceKm: 24.5, transportMode: 'uber_cabify', returnTrip: false },
   },
   {
     id: 'tx-008',
@@ -194,7 +111,6 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     time: '10:00',
     paymentMethod: 'transferencia',
     notes: 'Recibo mensual de conectividad',
-    synapseWeight: 50,
   },
 ];
 
@@ -218,7 +134,7 @@ export const INITIAL_TABS: TabConfig[] = [
 export const INITIAL_SETTINGS: UserSettings = {
   userName: '',
   userEmail: '',
-  currencySymbol: '$',
+  currencySymbol: 'S/',
   theme: 'light',
   trueTone: false,
   e2eeEnabled: false,

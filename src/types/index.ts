@@ -50,6 +50,8 @@ export interface Transaction {
   paymentMethod: 'tarjeta_credito' | 'tarjeta_debito' | 'transferencia' | 'efectivo' | 'banca_movil';
   notes?: string;
   tags?: string[];
+  quantity?: number;
+  unit?: string;
   transportDetails?: TransportDetails;
   medicineDetails?: MedicineDetails;
   foodDetails?: FoodDetails;

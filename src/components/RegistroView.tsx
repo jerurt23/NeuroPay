@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, History, Save, ChevronDown, X } from 'lucide-react';
+import { Plus, History, Save, Check, Loader2, Trash2, Scale } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
 
 interface RegistroViewProps {
@@ -10,22 +10,22 @@ interface RegistroViewProps {
 }
 
 type MainCategory = 'comida' | 'transporte' | 'medicina' | 'nueva';
+type UnitType = 'kg' | 'g' | 'unidades';
 
-interface FoodItem {
-  id: string;
-  name: string;
-  category: string;
-}
-
-interface RegistroHistory {
+interface PendingItem {
   id: string;
   category: string;
   subcategory: string;
   itemName: string;
   amount: number;
-  quantity?: number;
+  quantity: number;
+  unit: UnitType;
   date: string;
-  details?: string;
+  medicineBrand?: string;
+  transportOrigin?: string;
+  transportDestination?: string;
+  historyAmount?: number;
+  historyDate?: string;
 }
 
 const DEFAULT_FOOD_ITEMS: Record<string, string[]> = {
@@ -57,144 +57,211 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [customItem, setCustomItem] = useState('');
   const [amount, setAmount] = useState('');
   const [quantity, setQuantity] = useState('1');
+  const [unit, setUnit] = useState<UnitType>('unidades');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [medicineName, setMedicineName] = useState('');
   const [medicineBrand, setMedicineBrand] = useState('Genérico');
-  const [showNewItemInput, setShowNewItemInput] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
-  const [customFoodCategory, setCustomFoodCategory] = useState('');
-  const [showCustomCategory, setShowCustomCategory] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [customItems, setCustomItems] = useState<FoodItem[]>([]);
+  const [showNewItemInput, setShowNewItemInput] = useState(false);
+  const [customFoodTitle, setCustomFoodTitle] = useState('');
+  const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
 
-  const allFoodItems = useMemo(() => {
-    return { ...DEFAULT_FOOD_ITEMS };
-  }, []);
-
-  const getHistory = (category: string, itemName: string): RegistroHistory | null => {
+  const getHistory = (category: string, itemName: string) => {
     const matching = transactions
       .filter(t => t.category === category && t.title.toLowerCase().includes(itemName.toLowerCase()))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return matching.length > 0 ? {
-      id: matching[0].id,
-      category: matching[0].category,
-      subcategory: '',
-      itemName: matching[0].title,
-      amount: matching[0].amount,
-      date: matching[0].date,
-      details: matching[0].notes,
-    } : null;
+    return matching.length > 0
+      ? { amount: matching[0].amount, date: matching[0].date }
+      : null;
   };
 
-  const lastFoodHistory = useMemo(() => {
-    if (!selectedItem) return null;
-    return getHistory('comida', selectedItem);
-  }, [selectedItem, transactions]);
-
-  const lastTransportHistory = useMemo(() => {
-    if (!origin || !destination) return null;
-    const matching = transactions
-      .filter(t => t.category === 'transporte' && t.transportDetails)
-      .filter(t => {
-        const od = t.transportDetails!.origin.toLowerCase().includes(origin.toLowerCase()) &&
-                   t.transportDetails!.destination.toLowerCase().includes(destination.toLowerCase());
-        return od;
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return matching.length > 0 ? {
-      id: matching[0].id,
-      category: 'transporte',
-      subcategory: '',
-      itemName: `${matching[0].transportDetails!.origin} → ${matching[0].transportDetails!.destination}`,
-      amount: matching[0].amount,
-      date: matching[0].date,
-      details: matching[0].notes,
-    } : null;
-  }, [origin, destination, transactions]);
-
-  const lastMedicineHistory = useMemo(() => {
-    if (!medicineName) return null;
-    return getHistory('medicina', medicineName);
-  }, [medicineName, transactions]);
-
-  const handleSave = () => {
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
-
-    let title = '';
-    let details = '';
-    let transportDetails = undefined;
-    let medicineDetails = undefined;
-
-    if (mainCategory === 'comida') {
-      const itemName = customItem || selectedItem || newItemName || 'Alimento';
-      title = itemName;
-      details = foodSubcategory ? `${foodSubcategory} - ${itemName}` : itemName;
-    } else if (mainCategory === 'transporte') {
-      title = `${origin} → ${destination}`;
-      details = `Ruta: ${origin} a ${destination}`;
-      transportDetails = {
-        origin,
-        destination,
-        distanceKm: undefined,
-        transportMode: 'taxi' as 'taxi',
-        returnTrip: false,
-      };
-    } else if (mainCategory === 'medicina') {
-      title = medicineName;
-      details = `${medicineBrand} - ${medicineName}`;
-      medicineDetails = {
-        pharmacy: medicineName,
-        doseNotes: medicineBrand,
-      };
-    } else if (mainCategory === 'nueva') {
-      title = customItem || 'Nuevo registro';
-      details = customItem;
+  const lastHistory = useMemo(() => {
+    if (mainCategory === 'comida' && selectedItem) {
+      return getHistory('comida', selectedItem);
     }
-
-    const newTx: Transaction = {
-      id: `tx_${Date.now()}`,
-      title,
-      amount: parsedAmount,
-      type: 'expense' as const,
-      category: mainCategory || 'otro',
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().slice(0, 5),
-      notes: details,
-      paymentMethod: 'efectivo' as const,
-      tags: [],
-      transportDetails,
-      medicineDetails,
-    };
-
-    onSave(newTx);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setMainCategory(null);
-    setFoodSubcategory(null);
-    setSelectedItem('');
-    setCustomItem('');
-    setAmount('');
-    setQuantity('1');
-    setOrigin('');
-    setDestination('');
-    setMedicineName('');
-    setMedicineBrand('Genérico');
-    setShowNewItemInput(false);
-    setNewItemName('');
-    setNewItemCategory('');
-    setCustomFoodCategory('');
-    setShowCustomCategory(false);
-  };
+    if (mainCategory === 'transporte' && origin && destination) {
+      const matching = transactions
+        .filter(t => t.category === 'transporte' && t.transportDetails)
+        .filter(t => {
+          const td = t.transportDetails!;
+          return td.origin.toLowerCase().includes(origin.toLowerCase()) &&
+                 td.destination.toLowerCase().includes(destination.toLowerCase());
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return matching.length > 0 ? { amount: matching[0].amount, date: matching[0].date } : null;
+    }
+    if (mainCategory === 'medicina' && medicineName) {
+      return getHistory('medicina', medicineName);
+    }
+    return null;
+  }, [mainCategory, selectedItem, origin, destination, medicineName, transactions]);
 
   const filteredMedicines = MEDICINE_SUGGESTIONS.filter(m =>
     m.toLowerCase().includes(medicineName.toLowerCase())
+  );
+
+  const handleAddToList = () => {
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    let itemName = '';
+    let category = mainCategory || 'otro';
+    let subcat = '';
+    let originVal = '';
+    let destVal = '';
+    let brand = '';
+    const hist = lastHistory;
+
+    if (mainCategory === 'comida') {
+      itemName = customFoodTitle || selectedItem || newItemName || 'Alimento';
+      subcat = foodSubcategory || '';
+    } else if (mainCategory === 'transporte') {
+      itemName = `${origin} → ${destination}`;
+      originVal = origin;
+      destVal = destination;
+      category = 'transporte';
+    } else if (mainCategory === 'medicina') {
+      itemName = medicineName;
+      brand = medicineBrand;
+      category = 'medicina';
+    } else {
+      itemName = customFoodTitle || 'Registro';
+    }
+
+    const newItem: PendingItem = {
+      id: `pending_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      category,
+      subcategory: subcat,
+      itemName,
+      amount: parsedAmount,
+      quantity: parseFloat(quantity) || 1,
+      unit,
+      date: new Date().toISOString().split('T')[0],
+      medicineBrand: brand,
+      transportOrigin: originVal,
+      transportDestination: destVal,
+      historyAmount: hist?.amount,
+      historyDate: hist?.date,
+    };
+
+    setPendingItems((prev) => [...prev, newItem]);
+
+    // Reset form for next item
+    setAmount('');
+    setQuantity('1');
+    setSelectedItem('');
+    setCustomItem('');
+    setCustomFoodTitle('');
+    setOrigin('');
+    setDestination('');
+    setMedicineName('');
+    setNewItemName('');
+    setShowNewItemInput(false);
+  };
+
+  const handleRemovePending = (id: string) => {
+    setPendingItems((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const handleSaveAll = () => {
+    if (pendingItems.length === 0 || saveState !== 'idle') return;
+    setSaveState('saving');
+
+    pendingItems.forEach((item, index) => {
+      setTimeout(() => {
+        const transportDetails = item.category === 'transporte' && item.transportOrigin ? {
+          origin: item.transportOrigin,
+          destination: item.transportDestination || '',
+          distanceKm: undefined as number | undefined,
+          transportMode: 'taxi' as const,
+          returnTrip: false,
+        } : undefined;
+
+        const medicineDetails = item.category === 'medicina' ? {
+          pharmacy: item.itemName,
+          doseNotes: item.medicineBrand,
+        } : undefined;
+
+        const tx: Transaction = {
+          id: `tx_${Date.now()}_${index}`,
+          title: item.itemName,
+          amount: item.amount,
+          type: 'expense' as const,
+          category: item.category || 'otro',
+          date: item.date,
+          time: new Date().toTimeString().slice(0, 5),
+          quantity: item.quantity,
+          unit: item.unit,
+          notes: item.medicineBrand ? `${item.medicineBrand}` : undefined,
+          paymentMethod: 'efectivo' as const,
+          tags: item.subcategory ? [item.subcategory] : [],
+          transportDetails,
+          medicineDetails,
+        };
+
+        onSave(tx);
+      }, index * 120);
+    });
+
+    setTimeout(() => {
+      setSaveState('done');
+      setTimeout(() => {
+        setSaveState('idle');
+        setPendingItems([]);
+      }, 1800);
+    }, pendingItems.length * 120 + 300);
+  };
+
+  const renderPendingItems = () => {
+    if (pendingItems.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-zinc-600 mb-1 block">
+          Registros acumulados ({pendingItems.length})
+        </label>
+        {pendingItems.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-3 p-3 rounded-xl bg-white border border-zinc-200"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-zinc-900 truncate">{item.itemName}</p>
+              <p className="text-xs text-zinc-500">
+                {item.quantity} {item.unit} · {currencySymbol}{item.amount.toFixed(2)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleRemovePending(item.id)}
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderUnitButton = () => (
+    <div className="flex">
+      <button
+        type="button"
+        onClick={() => {
+          const units: UnitType[] = ['unidades', 'kg', 'g'];
+          const idx = units.indexOf(unit);
+          const next = units[(idx + 1) % units.length];
+          setUnit(next);
+        }}
+        className="px-3 py-2.5 rounded-r-xl bg-zinc-100 border border-l-0 border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors flex items-center gap-1"
+      >
+        <Scale className="w-3.5 h-3.5" />
+        {unit}
+      </button>
+    </div>
   );
 
   if (!mainCategory) {
@@ -202,13 +269,12 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       <div className="space-y-4 max-w-lg mx-auto">
         <h2 className="text-xl font-bold text-zinc-900">Nuevo Registro</h2>
         <p className="text-sm text-zinc-500">Selecciona una categoría</p>
-
         <div className="grid grid-cols-2 gap-3">
           {[
             { id: 'comida' as MainCategory, label: 'Comida', emoji: '🍎' },
             { id: 'transporte' as MainCategory, label: 'Transporte', emoji: '🚗' },
             { id: 'medicina' as MainCategory, label: 'Medicina', emoji: '💊' },
-            { id: 'nueva' as MainCategory, label: 'Nueva Categoría', emoji: '✨' },
+            { id: 'nueva' as MainCategory, label: 'Nueva', emoji: '✨' },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -225,12 +291,19 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     );
   }
 
+  const canAdd = amount && parseFloat(amount) > 0 && (
+    (mainCategory === 'comida' && (selectedItem || customItem || newItemName || customFoodTitle)) ||
+    (mainCategory === 'transporte' && origin && destination) ||
+    (mainCategory === 'medicina' && medicineName) ||
+    (mainCategory === 'nueva' && customFoodTitle)
+  );
+
   return (
     <div className="space-y-5 max-w-lg mx-auto">
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={resetForm}
+          onClick={() => { setMainCategory(null); setPendingItems([]); }}
           className="text-sm text-zinc-500 hover:text-zinc-700"
         >
           ← Volver
@@ -278,13 +351,13 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               <div>
                 <label className="text-xs font-medium text-zinc-600 mb-2 block">Alimento</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(allFoodItems[foodSubcategory] || []).map((item) => (
+                  {(DEFAULT_FOOD_ITEMS[foodSubcategory] || []).map((item) => (
                     <button
                       key={item}
                       type="button"
-                      onClick={() => { setSelectedItem(item); setCustomItem(''); }}
+                      onClick={() => { setSelectedItem(item); setCustomItem(''); setCustomFoodTitle(''); }}
                       className={`p-3 rounded-xl text-sm text-left transition-colors ${
-                        selectedItem === item
+                        selectedItem === item && !customItem
                           ? 'bg-blue-50 border-blue-500 border text-blue-700 font-medium'
                           : 'bg-zinc-50 border border-zinc-200 text-zinc-700 hover:border-zinc-300'
                       }`}
@@ -308,7 +381,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     type="text"
                     placeholder="Nombre del nuevo alimento"
                     value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
+                    onChange={(e) => { setNewItemName(e.target.value); setCustomFoodTitle(e.target.value); }}
                     className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
                   <div className="flex gap-2">
@@ -317,7 +390,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                       onChange={(e) => setNewItemCategory(e.target.value)}
                       className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-200 text-sm"
                     >
-                      <option value="">Asignar a categoría...</option>
+                      <option value="">Asignar a...</option>
                       <option value="proteina">Proteína</option>
                       <option value="carbohidratos">Carbohidratos</option>
                       <option value="menestras">Menestras</option>
@@ -327,13 +400,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     </select>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (newItemName.trim()) {
-                          setSelectedItem(newItemName);
-                          setCustomItem(newItemName);
-                          setShowNewItemInput(false);
-                        }
-                      }}
+                      onClick={() => setShowNewItemInput(false)}
                       className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium"
                     >
                       Agregar
@@ -342,40 +409,58 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio ({currencySymbol})</label>
+              <div>
+                <label className="text-xs font-medium text-zinc-600 mb-1 block">Cantidad y Unidad</label>
+                <div className="flex gap-2">
                   <input
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-zinc-600 mb-1 block">Cantidad</label>
-                  <input
-                    type="number"
-                    min="1"
+                    min="0"
+                    step="0.1"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
+                  <div className="flex gap-0.5 rounded-r-xl overflow-hidden border border-l-0 border-zinc-200">
+                    {(['unidades', 'kg', 'g'] as UnitType[]).map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => setUnit(u)}
+                        className={`px-3 py-2.5 text-xs font-medium transition-colors ${
+                          unit === u
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                        }`}
+                      >
+                        {u === 'unidades' ? 'ud' : u}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {lastFoodHistory && (
+              <div>
+                <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio unitario ({currencySymbol})</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                />
+              </div>
+
+              {lastHistory && selectedItem && (
                 <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
                   <div className="flex items-center gap-2 text-xs text-blue-600 mb-1">
                     <History className="w-3.5 h-3.5" />
                     <span>Último registro</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-700">{lastFoodHistory.date}</span>
+                    <span className="text-sm text-zinc-700">{lastHistory.date}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastFoodHistory.amount.toFixed(2)}</span>
+                      <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                       {amount && (
                         <span className="text-sm font-bold text-blue-600">
                           {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -425,16 +510,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             />
           </div>
 
-          {lastTransportHistory && origin && destination && (
+          {lastHistory && origin && destination && (
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
               <div className="flex items-center gap-2 text-xs text-blue-600 mb-1">
                 <History className="w-3.5 h-3.5" />
                 <span>Último viaje similar</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-700">{lastTransportHistory.date}</span>
+                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastTransportHistory.amount.toFixed(2)}</span>
+                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
                       {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -497,17 +582,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
-
-          {lastMedicineHistory && (
+          {lastHistory && (
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
               <div className="flex items-center gap-2 text-xs text-blue-600 mb-1">
                 <History className="w-3.5 h-3.5" />
                 <span>Último registro</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-700">{lastMedicineHistory.date}</span>
+                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastMedicineHistory.amount.toFixed(2)}</span>
+                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
                       {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -528,8 +612,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             <input
               type="text"
               placeholder="Nombre del registro"
-              value={customItem}
-              onChange={(e) => setCustomItem(e.target.value)}
+              value={customFoodTitle}
+              onChange={(e) => setCustomFoodTitle(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
@@ -544,28 +628,78 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
+          <div>
+            <label className="text-xs font-medium text-zinc-600 mb-1 block">Cantidad</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+              <div className="flex gap-0.5 rounded-r-xl overflow-hidden border border-l-0 border-zinc-200">
+                {(['unidades', 'kg', 'g'] as UnitType[]).map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setUnit(u)}
+                    className={`px-3 py-2.5 text-xs font-medium transition-colors ${
+                      unit === u
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                    }`}
+                  >
+                    {u === 'unidades' ? 'ud' : u}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* SAVE BUTTON */}
+      {/* ADD BUTTON */}
+      {pendingItems.length > 0 && renderPendingItems()}
+
       <button
         type="button"
-        onClick={handleSave}
-        disabled={!amount || parseFloat(amount) <= 0}
-        className={`w-full py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
-          saved
-            ? 'bg-emerald-500 text-white'
+        onClick={handleAddToList}
+        disabled={!canAdd}
+        className="w-full py-3 rounded-2xl border-2 border-dashed border-blue-300 text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        <Plus className="w-4 h-4" />
+        Agregar a la lista
+      </button>
+
+      {/* SAVE BUTTON WITH ANIMATION */}
+      <button
+        type="button"
+        onClick={handleSaveAll}
+        disabled={pendingItems.length === 0 || saveState !== 'idle'}
+        className={`relative w-full py-4 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all overflow-hidden ${
+          saveState === 'done'
+            ? 'bg-emerald-500 text-white cursor-default'
             : 'bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed'
         }`}
       >
-        {saved ? (
-          <>Guardado</>
-        ) : (
-          <>
-            <Save className="w-4 h-4" />
-            Guardar Registro
-          </>
+        {saveState === 'saving' && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-white" />
+          </span>
         )}
+        {saveState === 'done' && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Check className="w-6 h-6 animate-in zoom-in-75 duration-300 text-white" />
+          </span>
+        )}
+        <span className={`flex items-center gap-2 transition-opacity duration-200 ${
+          saveState !== 'idle' ? 'opacity-0' : 'opacity-100'
+        }`}>
+          <Save className="w-4 h-4" />
+          Guardar {pendingItems.length > 0 ? `(${pendingItems.length})` : ''}
+        </span>
       </button>
     </div>
   );
