@@ -701,6 +701,40 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           Guardar {pendingItems.length > 0 ? `(${pendingItems.length})` : ''}
         </span>
       </button>
+
+      {/* Purchase History */}
+      <div className="pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-zinc-900">Historial de Compras</h3>
+          <span className="text-xs text-zinc-500">{transactions.length} registros</span>
+        </div>
+        <div className="divide-y divide-zinc-100">
+          {transactions.map((tx) => (
+            <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+                  style={{ backgroundColor: categories.find(c => c.id === tx.category)?.color || '#8E8E93' }}
+                >
+                  {tx.title.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-900 truncate">{tx.title}</p>
+                  <p className="text-xs text-zinc-500">
+                    {tx.date}{tx.quantity ? ` · ${tx.quantity} ${tx.unit || 'ud'}` : ''}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-sm font-bold flex-shrink-0 ${tx.type === 'expense' ? 'text-zinc-900' : 'text-emerald-600'}`}>
+                {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{tx.amount.toFixed(2)}
+              </span>
+            </div>
+          ))}
+          {transactions.length === 0 && (
+            <p className="py-8 text-center text-sm text-zinc-400">Sin registros aún</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
