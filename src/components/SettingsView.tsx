@@ -2,15 +2,11 @@ import React, { useState } from 'react';
 import {
   Sun,
   Moon,
-  User,
   LogOut,
-  Sliders,
   Layers,
   Grid,
   Check,
-  ArrowUp,
-  ArrowDown,
-  Sparkles,
+  GripVertical,
 } from 'lucide-react';
 import { UserSettings, ThemeMode, TabConfig, WidgetConfig, WidgetSize } from '../types/index.ts';
 
@@ -34,14 +30,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onLogout,
 }) => {
   const [newTabName, setNewTabName] = useState('');
+  const [openTabs, setOpenTabs] = useState(true);
+  const [openWidgets, setOpenWidgets] = useState(true);
+  const [draggedTab, setDraggedTab] = useState<string | null>(null);
+  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
 
-  const moveTab = (index: number, direction: 'up' | 'down') => {
-    const target = direction === 'up' ? index - 1 : index + 1;
-    if (target < 0 || target >= tabs.length) return;
-    const copy = [...tabs];
-    [copy[index], copy[target]] = [copy[target], copy[index]];
-    copy.forEach((t, i) => (t.order = i));
-    onUpdateTabs(copy);
+  const sortedTabs = [...tabs].sort((a, b) => a.order - b.order);
+  const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
+
+  const persistTabs = (next: TabConfig[]) => {
+    next.forEach((t, i) => (t.order = i));
+    onUpdateTabs(next);
+  };
+
+  const persistWidgets = (next: WidgetConfig[]) => {
+    next.forEach((w, i) => (w.order = i));
+    onUpdateWidgets(next);
   };
 
   const toggleTab = (id: string) => {
@@ -56,15 +60,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     onUpdateWidgets(widgets.map((w) => (w.id === id ? { ...w, size } : w)));
   };
 
-  const moveWidget = (index: number, direction: 'up' | 'down') => {
-    const target = direction === 'up' ? index - 1 : index + 1;
-    if (target < 0 || target >= widgets.length) return;
-    const copy = [...widgets];
-    [copy[index], copy[target]] = [copy[target], copy[index]];
-    copy.forEach((w, i) => (w.order = i));
-    onUpdateWidgets(copy);
-  };
-
   const handleAddTab = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newTabName.trim();
@@ -77,21 +72,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       isCustom: true,
       order: tabs.length,
     };
-    onUpdateTabs([...tabs, newTab]);
+    persistTabs([...sortedTabs, newTab]);
     setNewTabName('');
   };
 
   const deleteCustomTab = (id: string) => {
-    onUpdateTabs(tabs.filter((t) => t.id !== id));
+    persistTabs(sortedTabs.filter((t) => t.id !== id));
   };
 
-  const activeTabs = tabs
-    .filter((t) => t.enabled)
-    .sort((a, b) => a.order - b.order);
+  // Drag & Drop tabs
+  const onTabDragStart = (id: string) => setDraggedTab(id);
+  const onTabDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (!draggedTab || draggedTab === id) return;
+    const reordered = [...sortedTabs];
+    const from = reordered.findIndex((t) => t.id === draggedTab);
+    const to = reordered.findIndex((t) => t.id === id);
+    if (from === -1 || to === -1) return;
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    persistTabs(reordered);
+  };
+  const onTabDragEnd = () => setDraggedTab(null);
 
-  const enabledWidgets = widgets
-    .filter((w) => w.enabled)
-    .sort((a, b) => a.order - b.order);
+  // Drag & Drop widgets
+  const onWidgetDragStart = (id: string) => setDraggedWidget(id);
+  const onWidgetDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (!draggedWidget || draggedWidget === id) return;
+    const reordered = [...sortedWidgets];
+    const from = reordered.findIndex((w) => w.id === draggedWidget);
+    const to = reordered.findIndex((w) => w.id === id);
+    if (from === -1 || to === -1) return;
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    persistWidgets(reordered);
+  };
+  const onWidgetDragEnd = () => setDraggedWidget(null);
 
   return (
     <div className="space-y-4 max-w-lg mx-auto">
@@ -143,147 +160,147 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Tabs management */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers className="w-5 h-5 text-blue-500" />
-          <h3 className="font-bold text-zinc-900">Organizar Pestañas</h3>
-        </div>
-        <p className="text-xs text-zinc-500 mb-2">
-          Activa, desactiva, y reordena las pestañas de la barra inferior.
-        </p>
-        <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
-          {tabs.sort((a, b) => a.order - b.order).map((tab, index) => (
-            <div
-              key={tab.id}
-              className="flex items-center justify-between gap-2 p-2.5 text-sm"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => toggleTab(tab.id)}
-                  className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
-                    tab.enabled ? 'bg-blue-600 text-white' : 'border border-zinc-300'
+      {/* Tabs container collapsible */}
+      <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpenTabs(!openTabs)}
+          className="w-full flex items-center justify-between p-5 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-blue-500" />
+            <h3 className="font-bold text-zinc-900">Organizar Pestañas</h3>
+          </div>
+          <span className="text-xs text-zinc-400">{openTabs ? '▲' : '▼'}</span>
+        </button>
+        {openTabs && (
+          <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
+            <p className="text-xs text-zinc-500 pt-3">
+              Desliza para reordenar. Toggle para activar.
+            </p>
+            <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
+              {sortedTabs.map((tab) => (
+                <div
+                  key={tab.id}
+                  draggable
+                  onDragStart={() => onTabDragStart(tab.id)}
+                  onDragOver={(e) => onTabDragOver(e, tab.id)}
+                  onDragEnd={onTabDragEnd}
+                  className={`flex items-center justify-between gap-2 p-2.5 text-sm cursor-grab active:cursor-grabbing transition-colors ${
+                    draggedTab === tab.id ? 'bg-blue-50' : 'bg-white'
                   }`}
                 >
-                  {tab.enabled && <Check className="w-3.5 h-3.5" />}
-                </button>
-                <span className={tab.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
-                  {tab.name}
-                </span>
-                {tab.isCustom && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 font-bold">
-                    Custom
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => moveTab(index, 'up')}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-30"
-                >
-                  <ArrowUp className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  disabled={index === tabs.length - 1}
-                  onClick={() => moveTab(index, 'down')}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-30"
-                >
-                  <ArrowDown className="w-3.5 h-3.5" />
-                </button>
-                {tab.isCustom && (
-                  <button
-                    type="button"
-                    onClick={() => deleteCustomTab(tab.id)}
-                    className="p-1 rounded text-rose-400 hover:text-rose-600 ml-1"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GripVertical className="w-4 h-4 text-zinc-300 flex-shrink-0" />
+                    <button
+                      type="button"
+                      onClick={() => toggleTab(tab.id)}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+                        tab.enabled ? 'bg-blue-600 text-white' : 'border border-zinc-300'
+                      }`}
+                    >
+                      {tab.enabled && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                    <span className={tab.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
+                      {tab.name}
+                    </span>
+                    {tab.isCustom && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 font-bold">
+                        Custom
+                      </span>
+                    )}
+                  </div>
+                  {tab.isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => deleteCustomTab(tab.id)}
+                      className="text-rose-400 hover:text-rose-600 px-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <form onSubmit={handleAddTab} className="flex gap-2 pt-2">
-          <input
-            type="text"
-            placeholder="Nombre de nueva pestaña"
-            value={newTabName}
-            onChange={(e) => setNewTabName(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-sm"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium"
-          >
-            + Agregar
-          </button>
-        </form>
+            <form onSubmit={handleAddTab} className="flex gap-2 pt-2">
+              <input
+                type="text"
+                placeholder="Nombre de nueva pestaña"
+                value={newTabName}
+                onChange={(e) => setNewTabName(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-sm"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium"
+              >
+                + Agregar
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
-      {/* Widgets */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Grid className="w-5 h-5 text-indigo-500" />
-          <h3 className="font-bold text-zinc-900">Widgets del Tablero</h3>
-        </div>
-        <p className="text-xs text-zinc-500 mb-2">
-          Activa, desactiva, reordena y redimensiona los widgets del dashboard.
-        </p>
-        <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
-          {widgets.sort((a, b) => a.order - b.order).map((w, index) => (
-            <div
-              key={w.id}
-              className="flex items-center justify-between p-2.5 text-sm"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => toggleWidget(w.id)}
-                  className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
-                    w.enabled ? 'bg-indigo-600 text-white' : 'border border-zinc-300'
+      {/* Widgets container collapsible */}
+      <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setOpenWidgets(!openWidgets)}
+          className="w-full flex items-center justify-between p-5 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Grid className="w-5 h-5 text-indigo-500" />
+            <h3 className="font-bold text-zinc-900">Widgets del Tablero</h3>
+          </div>
+          <span className="text-xs text-zinc-400">{openWidgets ? '▲' : '▼'}</span>
+        </button>
+        {openWidgets && (
+          <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
+            <p className="text-xs text-zinc-500 pt-3">
+              Desliza para reordenar. Toggle para activar.
+            </p>
+            <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
+              {sortedWidgets.map((w) => (
+                <div
+                  key={w.id}
+                  draggable
+                  onDragStart={() => onWidgetDragStart(w.id)}
+                  onDragOver={(e) => onWidgetDragOver(e, w.id)}
+                  onDragEnd={onWidgetDragEnd}
+                  className={`flex items-center justify-between p-2.5 text-sm cursor-grab active:cursor-grabbing transition-colors ${
+                    draggedWidget === w.id ? 'bg-indigo-50' : 'bg-white'
                   }`}
                 >
-                  {w.enabled && <Check className="w-3.5 h-3.5" />}
-                </button>
-                <span className={w.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
-                  {w.title}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <select
-                  value={w.size}
-                  onChange={(e) => changeWidgetSize(w.id, e.target.value as WidgetSize)}
-                  className="text-xs px-2 py-1 rounded bg-zinc-100 border border-zinc-200"
-                >
-                  <option value="small">S</option>
-                  <option value="medium">M</option>
-                  <option value="large">L</option>
-                </select>
-                <button
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => moveWidget(index, 'up')}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-30"
-                >
-                  <ArrowUp className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  disabled={index === widgets.length - 1}
-                  onClick={() => moveWidget(index, 'down')}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-700 disabled:opacity-30"
-                >
-                  <ArrowDown className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <GripVertical className="w-4 h-4 text-zinc-300 flex-shrink-0" />
+                    <button
+                      type="button"
+                      onClick={() => toggleWidget(w.id)}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+                        w.enabled ? 'bg-indigo-600 text-white' : 'border border-zinc-300'
+                      }`}
+                    >
+                      {w.enabled && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                    <span className={w.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
+                      {w.title}
+                    </span>
+                  </div>
+                  <select
+                    value={w.size}
+                    onChange={(e) => changeWidgetSize(w.id, e.target.value as WidgetSize)}
+                    className="text-xs px-2 py-1 rounded bg-zinc-100 border border-zinc-200"
+                  >
+                    <option value="small">S</option>
+                    <option value="medium">M</option>
+                    <option value="large">L</option>
+                  </select>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Logout */}
@@ -295,6 +312,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <LogOut className="w-4 h-4" />
         Cerrar sesión
       </button>
+
+
     </div>
   );
 };
