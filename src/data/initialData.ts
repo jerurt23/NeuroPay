@@ -126,9 +126,8 @@ export const INITIAL_WIDGETS: WidgetConfig[] = [
 export const INITIAL_TABS: TabConfig[] = [
   { id: 'dashboard', name: 'Tablero', icon: 'LayoutGrid', enabled: true, order: 0 },
   { id: 'registro', name: 'Registro', icon: 'Plus', enabled: true, order: 1 },
-  { id: 'routes', name: 'Rutas', icon: 'Navigation', enabled: true, order: 2 },
-  { id: 'budgets', name: 'Presupuestos', icon: 'PieChart', enabled: true, order: 3 },
-  { id: 'settings', name: 'Ajustes', icon: 'Sliders', enabled: true, order: 4 },
+  { id: 'budgets', name: 'Presupuestos', icon: 'PieChart', enabled: true, order: 2 },
+  { id: 'settings', name: 'Ajustes', icon: 'Sliders', enabled: true, order: 3 },
 ];
 
 export const INITIAL_SETTINGS: UserSettings = {

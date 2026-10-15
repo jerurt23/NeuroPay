@@ -3,7 +3,6 @@ import { HeaderNav } from './components/HeaderNav.tsx';
 import { TabBar } from './components/TabBar.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
 import { RegistroView } from './components/RegistroView.tsx';
-import { TransportRoutesView } from './components/TransportRoutesView.tsx';
 import { BudgetView } from './components/BudgetView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 import { NewTransactionModal } from './components/NewTransactionModal.tsx';
@@ -69,17 +68,6 @@ export default function App() {
     setTransactions((prev) => [newTx, ...prev]);
   };
 
-  const handleRepeatTrip = (tx: Transaction) => {
-    if (!tx.transportDetails) return;
-    const repeatedTx: Transaction = {
-      ...tx,
-      id: `tx_rep_${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().slice(0, 5),
-    };
-    handleSaveTransaction(repeatedTx);
-  };
-
   if (!isAuthenticated) {
     return <LoginScreen onLogin={handleLogin} />;
   }
@@ -112,15 +100,6 @@ export default function App() {
             categories={categories}
             currencySymbol={settings.currencySymbol}
             onSave={handleSaveTransaction}
-          />
-        )}
-
-        {activeTab === 'routes' && (
-          <TransportRoutesView
-            transactions={transactions}
-            currencySymbol={settings.currencySymbol}
-            onRepeatTrip={handleRepeatTrip}
-            onOpenNewTrip={() => setIsNewTxModalOpen(true)}
           />
         )}
 
