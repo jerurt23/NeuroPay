@@ -7,7 +7,9 @@ interface HeaderNavProps {
   onThemeChange: (theme: ThemeMode) => void;
   unreadCount: number;
   onOpenNotifications: () => void;
+  onOpenProfile: () => void;
   userName: string;
+  userPhoto?: string;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -15,7 +17,9 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onThemeChange,
   unreadCount,
   onOpenNotifications,
+  onOpenProfile,
   userName,
+  userPhoto,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-xl border-b border-zinc-200/50 px-4 sm:px-6 py-3">
@@ -53,9 +57,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             )}
           </button>
 
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center">
-            {userName ? userName.charAt(0).toUpperCase() : 'U'}
-          </div>
+          <button
+            type="button"
+            onClick={onOpenProfile}
+            className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center overflow-hidden hover:scale-105 transition-transform"
+          >
+            {userPhoto ? (
+              <img src={userPhoto} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              (userName ? userName.charAt(0).toUpperCase() : 'U')
+            )}
+          </button>
         </div>
       </div>
     </header>

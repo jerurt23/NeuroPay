@@ -136,4 +136,6 @@ export interface UserSettings {
   biometricUnlock: boolean;
   viewportMode: ViewportMode;
   autoSyncBankEmails: boolean;
+  userPhoto?: string;
+  pushNotifications?: boolean;
 }

@@ -158,6 +158,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             />
           </button>
         </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-zinc-900">Notificaciones Push</p>
+            <p className="text-xs text-zinc-500">Alertas en tiempo real</p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!settings.pushNotifications) {
+                try {
+                  if (typeof Notification !== 'undefined') {
+                    const perm = await Notification.requestPermission();
+                    if (perm === 'granted') {
+                      onUpdateSettings({ pushNotifications: true });
+                    }
+                  } else {
+                    onUpdateSettings({ pushNotifications: true });
+                  }
+                } catch (_) {
+                  onUpdateSettings({ pushNotifications: true });
+                }
+              } else {
+                onUpdateSettings({ pushNotifications: false });
+              }
+            }}
+            className={`w-12 h-7 rounded-full transition-colors relative ${
+              settings.pushNotifications ? 'bg-emerald-500' : 'bg-zinc-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
+                settings.pushNotifications ? 'left-5' : 'left-0.5'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Tabs container collapsible */}

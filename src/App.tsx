@@ -6,6 +6,7 @@ import { RegistroView } from './components/RegistroView.tsx';
 import { BudgetView } from './components/BudgetView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 import { NewTransactionModal } from './components/NewTransactionModal.tsx';
+import { ProfileModal } from './components/ProfileModal.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
 import {
   INITIAL_CATEGORIES,
@@ -58,6 +59,8 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isNewTxModalOpen, setIsNewTxModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [currentMasterPassword, setCurrentMasterPassword] = useState('AppleSecure2026!');
 
   useEffect(() => {
     localStorage.setItem('neuropay_settings', JSON.stringify(settings));
@@ -100,7 +103,9 @@ export default function App() {
         onThemeChange={(theme) => setSettings((s) => ({ ...s, theme }))}
         unreadCount={0}
         onOpenNotifications={() => {}}
+        onOpenProfile={() => setIsProfileOpen(true)}
         userName={settings.userName}
+        userPhoto={settings.userPhoto}
       />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24">
@@ -161,6 +166,20 @@ export default function App() {
         onSave={handleSaveTransaction}
         categories={categories}
         currencySymbol={settings.currencySymbol}
+      />
+
+      <ProfileModal
+        open={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        settings={settings}
+        currentPassword={currentMasterPassword}
+        onUpdateSettings={(s) => setSettings((prev) => ({ ...prev, ...s }))}
+        onChangePassword={(oldP, newP) => {
+          if (oldP !== currentMasterPassword) return false;
+          setCurrentMasterPassword(newP);
+          return true;
+        }}
+        onLogout={handleLogout}
       />
     </div>
   );
