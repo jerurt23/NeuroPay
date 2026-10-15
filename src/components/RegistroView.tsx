@@ -139,15 +139,15 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         origin,
         destination,
         distanceKm: undefined,
-        transportMethod: 'taxi' as const,
+        transportMode: 'taxi' as 'taxi',
         returnTrip: false,
       };
     } else if (mainCategory === 'medicina') {
       title = medicineName;
       details = `${medicineBrand} - ${medicineName}`;
       medicineDetails = {
-        name: medicineName,
-        brand: medicineBrand,
+        pharmacy: medicineName,
+        doseNotes: medicineBrand,
       };
     } else if (mainCategory === 'nueva') {
       title = customItem || 'Nuevo registro';
