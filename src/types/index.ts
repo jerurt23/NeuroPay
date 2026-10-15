@@ -137,4 +137,6 @@ export interface UserSettings {
   viewportMode: ViewportMode;
   autoSyncBankEmails: boolean;
   userPhoto?: string;
+  chartType?: 'bar' | 'line';
+  countryCode?: string;
 }

@@ -9,6 +9,7 @@ interface DashboardViewProps {
   budgets: Budget[];
   bankEmails: BankEmail[];
   currencySymbol: string;
+  chartType?: 'bar' | 'line';
   onOpenNewTransaction: () => void;
 }
 
@@ -20,6 +21,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   budgets,
   bankEmails,
   currencySymbol,
+  chartType = 'bar',
   onOpenNewTransaction,
 }) => {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month');
@@ -135,27 +137,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Simple CSS Bar Chart */}
-        <div className="space-y-3">
-          {chartData.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-3">
-              <span className="text-xs text-zinc-500 w-12 flex-shrink-0">{item.label}</span>
-              <div className="flex-1 flex items-center gap-1 h-6">
-                <div
-                  className="h-full bg-emerald-400 rounded-l transition-all duration-300"
-                  style={{ width: `${(item.income / maxChartValue) * 100}%` }}
-                />
-                <div
-                  className="h-full bg-rose-400 rounded-r transition-all duration-300"
-                  style={{ width: `${(item.expense / maxChartValue) * 100}%` }}
-                />
+        {chartType === 'line' ? (
+          <svg viewBox={`0 0 ${chartData.length * 60} 120`} className="w-full h-40">
+            {/* income line */}
+            <polyline
+              fill="none"
+              stroke="#34d399"
+              strokeWidth="2"
+              points={chartData.map((d, i) => `${i * 60 + 30},${120 - (d.income / maxChartValue) * 100}`).join(' ')}
+            />
+            {/* expense line */}
+            <polyline
+              fill="none"
+              stroke="#fb7185"
+              strokeWidth="2"
+              points={chartData.map((d, i) => `${i * 60 + 30},${120 - (d.expense / maxChartValue) * 100}`).join(' ')}
+            />
+            {chartData.map((d, i) => (
+              <g key={i}>
+                <circle cx={i * 60 + 30} cy={120 - (d.income / maxChartValue) * 100} r="3" fill="#34d399" />
+                <circle cx={i * 60 + 30} cy={120 - (d.expense / maxChartValue) * 100} r="3" fill="#fb7185" />
+                <text x={i * 60 + 30} y={118} textAnchor="middle" className="text-[8px] fill-zinc-500">
+                  {d.label}
+                </text>
+              </g>
+            ))}
+          </svg>
+        ) : (
+          <div className="space-y-3">
+            {chartData.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <span className="text-xs text-zinc-500 w-12 flex-shrink-0">{item.label}</span>
+                <div className="flex-1 flex items-center gap-1 h-6">
+                  <div
+                    className="h-full bg-emerald-400 rounded-l transition-all duration-300"
+                    style={{ width: `${(item.income / maxChartValue) * 100}%` }}
+                  />
+                  <div
+                    className="h-full bg-rose-400 rounded-r transition-all duration-300"
+                    style={{ width: `${(item.expense / maxChartValue) * 100}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-zinc-400 w-16 text-right flex-shrink-0">
+                  {item.income > 0 || item.expense > 0 ? `${currencySymbol}${(item.income + item.expense).toFixed(0)}` : ''}
+                </span>
               </div>
-              <span className="text-[10px] text-zinc-400 w-16 text-right flex-shrink-0">
-                {item.income > 0 || item.expense > 0 ? `${currencySymbol}${(item.income + item.expense).toFixed(0)}` : ''}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-zinc-100">
           <div className="flex items-center gap-1.5">

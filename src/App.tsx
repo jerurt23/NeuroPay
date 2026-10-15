@@ -116,6 +116,7 @@ export default function App() {
             budgets={budgets}
             bankEmails={[]}
             currencySymbol={settings.currencySymbol}
+            chartType={settings.chartType}
             onOpenNewTransaction={() => setIsNewTxModalOpen(true)}
           />
         )}

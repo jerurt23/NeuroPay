@@ -135,6 +135,8 @@ export const INITIAL_SETTINGS: UserSettings = {
   userEmail: '',
   currencySymbol: 'S/',
   theme: 'light',
+  chartType: 'bar',
+  countryCode: 'PE',
   trueTone: false,
   e2eeEnabled: false,
   pushNotifications: false,
