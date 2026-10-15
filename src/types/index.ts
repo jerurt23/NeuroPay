@@ -137,5 +137,4 @@ export interface UserSettings {
   viewportMode: ViewportMode;
   autoSyncBankEmails: boolean;
   userPhoto?: string;
-  pushNotifications?: boolean;
 }
