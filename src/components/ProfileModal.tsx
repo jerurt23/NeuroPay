@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Coins, User } from 'lucide-react';
+import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Coins, User, Moon, Sun } from 'lucide-react';
 import { UserSettings } from '../types/index.ts';
 
 interface ProfileModalProps {
