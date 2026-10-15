@@ -381,7 +381,7 @@ export default function App() {
 
   // View frame wrapper simulation
   const renderAppContent = () => (
-    <div className={`min-h-screen flex flex-col bg-zinc-50 dark:bg-black text-zinc-900 dark:text-zinc-100 transition-colors duration-500 ${settings.trueTone ? 'true-tone-active' : ''}`}>
+    <div className={`min-h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#0a0a0a] text-zinc-900 dark:text-zinc-100 transition-colors duration-500 ${settings.trueTone ? 'true-tone-active' : ''}`}>
       {/* Dynamic Island Top Pill */}
       <DynamicIsland
         notification={islandNotification}

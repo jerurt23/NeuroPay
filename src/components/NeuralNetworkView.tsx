@@ -419,7 +419,7 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
       </div>
 
       {/* Main Graph Canvas & Inspection Panel */}
-      <div className="relative rounded-3xl ios-glass-card overflow-hidden p-2 min-h-[520px] flex flex-col items-center justify-center bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900">
+      <div className="relative rounded-3xl ios-glass-card overflow-hidden p-2 min-h-[520px] flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 dark:from-zinc-950 dark:to-zinc-900">
         <canvas
           ref={canvasRef}
           width={800}

@@ -261,7 +261,7 @@ export const BankEmailSyncView: React.FC<BankEmailSyncViewProps> = ({
           </div>
 
           {/* Live Extraction Preview */}
-          <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3 flex flex-col justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3 flex flex-col justify-between">
             <div>
               <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block mb-2">
                 Resultado de Extracción Neural

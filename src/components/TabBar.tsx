@@ -48,7 +48,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   return (
     <nav 
       aria-label="Navegación principal de pestañas"
-      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-1.5rem)] px-3 py-2 rounded-3xl ios-glass border border-white/20 dark:border-white/10 shadow-2xl backdrop-blur-2xl transition-all"
+      className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[calc(100%-1.5rem)] px-3 py-2 rounded-3xl bg-white/80 dark:bg-zinc-900/80 border border-zinc-200/50 dark:border-white/10 shadow-2xl backdrop-blur-2xl transition-all"
     >
       <div className="flex items-center justify-around gap-1">
         {visibleTabs.map((tab) => {

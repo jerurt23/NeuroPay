@@ -226,7 +226,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {/* Visual synaptic representation */}
                   <div 
                     onClick={() => onNavigateTab('neural')}
-                    className="h-28 rounded-2xl bg-zinc-950 p-3 flex items-center justify-around cursor-pointer border border-zinc-800 relative overflow-hidden group"
+                    className="h-28 rounded-2xl bg-slate-900 dark:bg-zinc-950 p-3 flex items-center justify-around cursor-pointer border border-slate-700 dark:border-zinc-800 relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 opacity-50 group-hover:opacity-80 transition-opacity" />
                     
