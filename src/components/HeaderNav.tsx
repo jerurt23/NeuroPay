@@ -1,282 +1,63 @@
 import React from 'react';
-import { 
- Sun, 
- Moon, 
- Sparkles, 
- ShieldCheck, 
- ShieldAlert, 
- Smartphone, 
- Tablet, 
- Monitor, 
- Maximize2,
- Lock,
- Unlock,
- Bell
-} from 'lucide-react';
-import { ThemeMode, ViewportMode } from '../types/index.ts';
+import { Sun, Moon, Bell } from 'lucide-react';
+import { ThemeMode } from '../types/index.ts';
 
 interface HeaderNavProps {
- theme: ThemeMode;
- onThemeChange: (theme: ThemeMode) => void;
- trueTone: boolean;
- onTrueToneToggle: () => void;
- viewportMode: ViewportMode;
- onViewportChange: (mode: ViewportMode) => void;
- e2eeLocked: boolean;
- onToggleLock: () => void;
- unreadCount: number;
- onOpenNotifications: () => void;
- onOpenAuth: () => void;
- userName: string;
+  theme: ThemeMode;
+  onThemeChange: (theme: ThemeMode) => void;
+  unreadCount: number;
+  onOpenNotifications: () => void;
+  userName: string;
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
- theme,
- onThemeChange,
- trueTone,
- onTrueToneToggle,
- viewportMode,
- onViewportChange,
- e2eeLocked,
- onToggleLock,
- unreadCount,
- onOpenNotifications,
- onOpenAuth,
- userName,
+  theme,
+  onThemeChange,
+  unreadCount,
+  onOpenNotifications,
+  userName,
 }) => {
- return (
- <header className="sticky top-0 z-40 w-full transition-colors duration-300 ios-glass border-b border-black/5 px-3 sm:px-6 pt-9 sm:pt-2.5 pb-2.5">
- <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
- {/* Brand & iOS Title */}
- <div className="flex items-center gap-3">
- <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-bold text-lg">
- S
- </div>
- <div>
- <div className="flex items-center gap-2">
- <h1 className="text-base sm:text-lg font-bold tracking-tight text-zinc-900100">
- SynapsePay
- </h1>
- <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600400 border border-blue-500/20">
- iOS 18 Native
- </span>
- </div>
- <p className="text-[11px] text-zinc-500400 hidden sm:block">
- Histórico • Red Neuronal • Cifrado E2EE
- </p>
- </div>
- </div>
+  return (
+    <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-xl border-b border-zinc-200/50 px-4 sm:px-6 py-3">
+      <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+            N
+          </div>
+          <h1 className="text-lg font-bold text-zinc-900 tracking-tight">
+            NEUROPAY
+          </h1>
+        </div>
 
- {/* Action Controls Toolbar */}
- <div className="flex items-center gap-1.5 sm:gap-2">
- {/* True Tone Toggle */}
- <button
- type="button"
- onClick={onTrueToneToggle}
- title={trueTone ? 'True Tone activado (calidez ambiental inteligente)' : 'Activar True Tone'}
- aria-label="True Tone toggle"
- className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
- trueTone
- ? 'bg-amber-500/15 text-amber-700300 border border-amber-500/30 shadow-inner'
- : 'bg-zinc-100800 text-zinc-600400 hover:bg-zinc-200:bg-zinc-700'
- }`}
- >
- <Sparkles className={`w-3.5 h-3.5 ${trueTone ? 'text-amber-500 fill-amber-500' : ''}`} />
- <span className="hidden md:inline">True Tone</span>
- <span className={`w-1.5 h-1.5 rounded-full ${trueTone ? 'bg-amber-500' : 'bg-zinc-400'}`} />
- </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
+            className="p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
+            aria-label="Cambiar tema"
+          >
+            {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
 
- {/* Theme Mode Dropdown */}
- <div className="relative group">
- <button
- type="button"
- title="Cambiar tema"
- aria-label="Cambiar tema"
- className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-all border border-black/5"
- >
- {theme === 'light' ? (
- <Sun className="w-3.5 h-3.5 text-amber-500" />
- ) : (
- <Moon className="w-3.5 h-3.5 text-indigo-400" />
- )}
- <span className="hidden md:inline">{theme === 'light' ? 'Claro' : 'Oscuro'}</span>
- <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
- </svg>
- </button>
+          <button
+            type="button"
+            onClick={onOpenNotifications}
+            className="relative p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
+            aria-label="Notificaciones"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </button>
 
- {/* Dropdown Menu */}
- <div className="absolute right-0 top-full mt-1 w-44 rounded-2xl bg-white border border-zinc-200 shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden">
- <button
- type="button"
- onClick={() => onThemeChange('light')}
- className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors ${
- theme === 'light'
- ? 'bg-amber-50 text-amber-700'
- : 'text-zinc-700 hover:bg-zinc-50'
- }`}
- >
- <Sun className="w-4 h-4 text-amber-500" />
- <span>Modo Claro</span>
- {theme === 'light' && (
- <svg className="w-3.5 h-3.5 ml-auto text-amber-500" fill="currentColor" viewBox="0 0 20 20">
- <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
- </svg>
- )}
- </button>
- <button
- type="button"
- onClick={() => onThemeChange('dark')}
- className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors ${
- theme === 'dark'
- ? 'bg-indigo-50 text-indigo-700'
- : 'text-zinc-700 hover:bg-zinc-50'
- }`}
- >
- <Moon className="w-4 h-4 text-indigo-400" />
- <span>Modo Oscuro</span>
- {theme === 'dark' && (
- <svg className="w-3.5 h-3.5 ml-auto text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
- <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
- </svg>
- )}
- </button>
- <div className="border-t border-zinc-100">
- <button
- type="button"
- onClick={() => onThemeChange('auto')}
- className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors ${
- theme === 'auto'
- ? 'bg-blue-50 text-blue-700'
- : 'text-zinc-700 hover:bg-zinc-50'
- }`}
- >
- <Sparkles className="w-4 h-4 text-blue-500" />
- <span>Automático</span>
- {theme === 'auto' && (
- <svg className="w-3.5 h-3.5 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20">
- <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
- </svg>
- )}
- </button>
- </div>
- </div>
- </div>
-
- {/* Viewport Frame Switcher (Adaptive / APK / macOS preview) */}
- <div className="hidden lg:flex items-center bg-zinc-100800 p-0.5 rounded-full border border-black/5">
- <button
- type="button"
- onClick={() => onViewportChange('native')}
- title="Vista Fluida / Nativa"
- aria-label="Vista Fluida"
- className={`p-1.5 rounded-full transition-all ${
- viewportMode === 'native'
- ? 'bg-white700 text-blue-600400 shadow-sm'
- : 'text-zinc-400 hover:text-zinc-700:text-zinc-200'
- }`}
- >
- <Maximize2 className="w-3.5 h-3.5" />
- </button>
- <button
- type="button"
- onClick={() => onViewportChange('iphone')}
- title="Marco iPhone 16 Pro"
- aria-label="Marco iPhone 16 Pro"
- className={`p-1.5 rounded-full transition-all ${
- viewportMode === 'iphone'
- ? 'bg-white700 text-blue-600400 shadow-sm'
- : 'text-zinc-400 hover:text-zinc-700:text-zinc-200'
- }`}
- >
- <Smartphone className="w-3.5 h-3.5" />
- </button>
- <button
- type="button"
- onClick={() => onViewportChange('ipad')}
- title="Marco iPad Pro"
- aria-label="Marco iPad Pro"
- className={`p-1.5 rounded-full transition-all ${
- viewportMode === 'ipad'
- ? 'bg-white700 text-blue-600400 shadow-sm'
- : 'text-zinc-400 hover:text-zinc-700:text-zinc-200'
- }`}
- >
- <Tablet className="w-3.5 h-3.5" />
- </button>
- <button
- type="button"
- onClick={() => onViewportChange('macbook')}
- title="Marco macOS / Windows APK"
- aria-label="Marco macOS Desktop"
- className={`p-1.5 rounded-full transition-all ${
- viewportMode === 'macbook'
- ? 'bg-white700 text-blue-600400 shadow-sm'
- : 'text-zinc-400 hover:text-zinc-700:text-zinc-200'
- }`}
- >
- <Monitor className="w-3.5 h-3.5" />
- </button>
- </div>
-
- {/* E2EE Lock State Badge */}
- <button
- type="button"
- onClick={onToggleLock}
- title={e2eeLocked ? 'Bóveda E2EE bloqueada (Cifrado AES-256)' : 'Bóveda E2EE abierta'}
- aria-label="E2EE Lock status"
- className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
- e2eeLocked
- ? 'bg-rose-500/15 text-rose-700300 border border-rose-500/30'
- : 'bg-emerald-500/15 text-emerald-700300 border border-emerald-500/30'
- }`}
- >
- {e2eeLocked ? (
- <>
- <Lock className="w-3.5 h-3.5 text-rose-500" />
- <span className="hidden sm:inline">E2EE Bloqueado</span>
- </>
- ) : (
- <>
- <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
- <span className="hidden sm:inline">E2EE Activo</span>
- </>
- )}
- </button>
-
- {/* Bank / Notifications Bell */}
- <button
- type="button"
- onClick={onOpenNotifications}
- title="Alertas y Notificaciones"
- aria-label="Notificaciones"
- className="relative p-2 rounded-full bg-zinc-100800 text-zinc-600300 hover:bg-zinc-200:bg-zinc-700 transition-colors"
- >
- <Bell className="w-4 h-4" />
- {unreadCount > 0 && (
- <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce">
- {unreadCount}
- </span>
- )}
- </button>
-
- {/* User Profile Avatar */}
- <button
- type="button"
- onClick={onOpenAuth}
- title="Perfil de Usuario y Clave Maestra"
- aria-label="Perfil de usuario"
- className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-zinc-100800 hover:bg-zinc-200:bg-zinc-700 transition-colors"
- >
- <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-[11px] font-bold flex items-center justify-center">
- {userName.charAt(0)}
- </div>
- <span className="text-xs font-medium text-zinc-700300 hidden sm:inline max-w-[80px] truncate">
- {userName.split(' ')[0]}
- </span>
- </button>
- </div>
- </div>
- </header>
- );
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+            {userName ? userName.charAt(0).toUpperCase() : 'U'}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
 };
