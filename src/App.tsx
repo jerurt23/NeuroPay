@@ -126,6 +126,7 @@ export default function App() {
             transactions={transactions}
             categories={categories}
             currencySymbol={settings.currencySymbol}
+            verifyPassword={(p) => p === currentMasterPassword}
             onSave={handleSaveTransaction}
           />
         )}

@@ -1,15 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, History, Save, Check, Loader2, Trash2, Scale } from 'lucide-react';
+import { Plus, History, Save, Check, Loader2, Trash2, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
 
 interface RegistroViewProps {
   transactions: Transaction[];
   categories: CategoryInfo[];
   currencySymbol: string;
+  verifyPassword?: (p: string) => boolean;
   onSave: (tx: Transaction) => void;
 }
 
-type MainCategory = 'comida' | 'transporte' | 'medicina' | 'nueva';
+type MainCategory = 'comida' | 'transporte' | 'medicina' | 'ingresos' | 'nueva';
 type UnitType = 'kg' | 'g' | 'unidades';
 
 interface PendingItem {
@@ -21,6 +22,7 @@ interface PendingItem {
   quantity: number;
   unit: UnitType;
   date: string;
+  txType: 'expense' | 'income';
   medicineBrand?: string;
   transportOrigin?: string;
   transportDestination?: string;
@@ -49,6 +51,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   transactions,
   categories,
   currencySymbol,
+  verifyPassword,
   onSave,
 }) => {
   const [mainCategory, setMainCategory] = useState<MainCategory | null>(null);
@@ -65,13 +68,23 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
   const [showNewItemInput, setShowNewItemInput] = useState(false);
-  const [customFoodTitle, setCustomFoodTitle] = useState('');
+  const [customTitle, setCustomTitle] = useState('');
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
 
-  const getHistory = (category: string, itemName: string) => {
+  // password protection for incomes
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [protectEnabled, setProtectEnabled] = useState(false);
+  const [gatePassword, setGatePassword] = useState('');
+  const [enteredGatePassword, setEnteredGatePassword] = useState('');
+  const [unlocked, setUnlocked] = useState(true);
+
+  const getHistory = (category: MainCategory, itemName: string) => {
     const matching = transactions
-      .filter(t => t.category === category && t.title.toLowerCase().includes(itemName.toLowerCase()))
+      .filter((t) => {
+        if (category === 'ingresos') return t.type === 'income' && t.title.toLowerCase().includes(itemName.toLowerCase());
+        return t.category === category && t.title.toLowerCase().includes(itemName.toLowerCase());
+      })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return matching.length > 0
       ? { amount: matching[0].amount, date: matching[0].date }
@@ -79,33 +92,34 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   };
 
   const lastHistory = useMemo(() => {
-    if (mainCategory === 'comida' && selectedItem) {
-      return getHistory('comida', selectedItem);
-    }
+    if (mainCategory === 'comida' && selectedItem) return getHistory('comida', selectedItem);
+    if (mainCategory === 'comida' && customTitle) return getHistory('comida', customTitle);
     if (mainCategory === 'transporte' && origin && destination) {
       const matching = transactions
-        .filter(t => t.category === 'transporte' && t.transportDetails)
-        .filter(t => {
+        .filter((t) => t.category === 'transporte' && t.transportDetails)
+        .filter((t) => {
           const td = t.transportDetails!;
           return td.origin.toLowerCase().includes(origin.toLowerCase()) &&
-                 td.destination.toLowerCase().includes(destination.toLowerCase());
+            td.destination.toLowerCase().includes(destination.toLowerCase());
         })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       return matching.length > 0 ? { amount: matching[0].amount, date: matching[0].date } : null;
     }
-    if (mainCategory === 'medicina' && medicineName) {
-      return getHistory('medicina', medicineName);
-    }
+    if (mainCategory === 'medicina' && medicineName) return getHistory('medicina', medicineName);
+    if (mainCategory === 'ingresos' && customTitle) return getHistory('ingresos', customTitle);
     return null;
-  }, [mainCategory, selectedItem, origin, destination, medicineName, transactions]);
+  }, [mainCategory, selectedItem, customTitle, origin, destination, medicineName, transactions]);
 
-  const filteredMedicines = MEDICINE_SUGGESTIONS.filter(m =>
+  const filteredMedicines = MEDICINE_SUGGESTIONS.filter((m) =>
     m.toLowerCase().includes(medicineName.toLowerCase())
   );
+
+  const incomeLocked = protectEnabled && !!gatePassword && !unlocked;
 
   const handleAddToList = () => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+    if (mainCategory === 'ingresos' && incomeLocked) return;
 
     let itemName = '';
     let category = mainCategory || 'otro';
@@ -114,10 +128,12 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     let destVal = '';
     let brand = '';
     const hist = lastHistory;
+    let txType: 'expense' | 'income' = 'expense';
 
     if (mainCategory === 'comida') {
-      itemName = customFoodTitle || selectedItem || newItemName || 'Alimento';
+      itemName = customTitle || selectedItem || newItemName || 'Alimento';
       subcat = foodSubcategory || '';
+      category = 'comida';
     } else if (mainCategory === 'transporte') {
       itemName = `${origin} → ${destination}`;
       originVal = origin;
@@ -127,8 +143,12 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       itemName = medicineName;
       brand = medicineBrand;
       category = 'medicina';
+    } else if (mainCategory === 'ingresos') {
+      itemName = customTitle || 'Ingreso';
+      category = 'otro';
+      txType = 'income';
     } else {
-      itemName = customFoodTitle || 'Registro';
+      itemName = customTitle || 'Registro';
       category = 'otro';
     }
 
@@ -141,6 +161,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       quantity: parseFloat(quantity) || 1,
       unit,
       date: new Date().toISOString().split('T')[0],
+      txType,
       medicineBrand: brand,
       transportOrigin: originVal,
       transportDestination: destVal,
@@ -150,12 +171,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
     setPendingItems((prev) => [...prev, newItem]);
 
-    // Reset form for next item
     setAmount('');
     setQuantity('1');
     setSelectedItem('');
     setCustomItem('');
-    setCustomFoodTitle('');
+    setCustomTitle('');
     setOrigin('');
     setDestination('');
     setMedicineName('');
@@ -190,7 +210,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           id: `tx_${Date.now()}_${index}`,
           title: item.itemName,
           amount: item.amount,
-          type: 'expense' as const,
+          type: item.txType,
           category: item.category || 'otro',
           date: item.date,
           time: new Date().toTimeString().slice(0, 5),
@@ -216,6 +236,14 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     }, pendingItems.length * 120 + 300);
   };
 
+  const canAdd = amount && parseFloat(amount) > 0 && (
+    (mainCategory === 'comida' && (selectedItem || customItem || newItemName || customTitle)) ||
+    (mainCategory === 'transporte' && origin && destination) ||
+    (mainCategory === 'medicina' && medicineName) ||
+    (mainCategory === 'ingresos' && true) ||
+    (mainCategory === 'nueva' && customTitle)
+  );
+
   const renderPendingItems = () => {
     if (pendingItems.length === 0) return null;
     return (
@@ -224,14 +252,12 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           Registros acumulados ({pendingItems.length})
         </label>
         {pendingItems.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-3 p-3 rounded-xl bg-white border border-zinc-200"
-          >
+          <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-zinc-200">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-zinc-900 truncate">{item.itemName}</p>
               <p className="text-xs text-zinc-500">
                 {item.quantity} {item.unit} · {currencySymbol}{item.amount.toFixed(2)}
+                {item.txType === 'income' && <span className="ml-1 text-emerald-600">(ingreso)</span>}
               </p>
             </div>
             <button
@@ -247,44 +273,27 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     );
   };
 
-  const renderUnitButton = () => (
-    <div className="flex">
-      <button
-        type="button"
-        onClick={() => {
-          const units: UnitType[] = ['unidades', 'kg', 'g'];
-          const idx = units.indexOf(unit);
-          const next = units[(idx + 1) % units.length];
-          setUnit(next);
-        }}
-        className="px-3 py-2.5 rounded-r-xl bg-zinc-100 border border-l-0 border-zinc-200 text-xs font-medium text-zinc-600 hover:bg-zinc-200 transition-colors flex items-center gap-1"
-      >
-        <Scale className="w-3.5 h-3.5" />
-        {unit}
-      </button>
-    </div>
-  );
-
   if (!mainCategory) {
     return (
       <div className="space-y-4 max-w-lg mx-auto">
         <h2 className="text-xl font-bold text-zinc-900">Nuevo Registro</h2>
         <p className="text-sm text-zinc-500">Selecciona una categoría</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { id: 'comida' as MainCategory, label: 'Comida', emoji: '🍎' },
             { id: 'transporte' as MainCategory, label: 'Transporte', emoji: '🚗' },
             { id: 'medicina' as MainCategory, label: 'Medicina', emoji: '💊' },
+            { id: 'ingresos' as MainCategory, label: 'Ingresos', emoji: '📈' },
             { id: 'nueva' as MainCategory, label: 'Nueva', emoji: '✨' },
           ].map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setMainCategory(cat.id)}
-              className="p-6 rounded-2xl bg-white border border-zinc-200 hover:border-blue-400 hover:shadow-md transition-all text-center"
+              className="p-5 rounded-2xl bg-white border border-zinc-200 hover:border-blue-400 hover:shadow-md transition-all text-center"
             >
-              <span className="text-3xl block mb-2">{cat.emoji}</span>
-              <span className="font-medium text-zinc-900">{cat.label}</span>
+              <span className="text-2xl block mb-1">{cat.emoji}</span>
+              <span className="font-medium text-zinc-900 text-sm">{cat.label}</span>
             </button>
           ))}
         </div>
@@ -292,12 +301,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     );
   }
 
-  const canAdd = amount && parseFloat(amount) > 0 && (
-    (mainCategory === 'comida' && (selectedItem || customItem || newItemName || customFoodTitle)) ||
-    (mainCategory === 'transporte' && origin && destination) ||
-    (mainCategory === 'medicina' && medicineName) ||
-    (mainCategory === 'nueva' && customFoodTitle)
-  );
+  const historyFilter = (tx: Transaction) => {
+    if (mainCategory === 'ingresos') return tx.type === 'income';
+    if (mainCategory === 'nueva') return false;
+    return tx.category === mainCategory;
+  };
 
   return (
     <div className="space-y-5 max-w-lg mx-auto">
@@ -313,6 +321,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           {mainCategory === 'comida' && 'Registrar Comida'}
           {mainCategory === 'transporte' && 'Registrar Transporte'}
           {mainCategory === 'medicina' && 'Registrar Medicina'}
+          {mainCategory === 'ingresos' && 'Registrar Ingreso'}
           {mainCategory === 'nueva' && 'Nueva Categoría'}
         </h2>
       </div>
@@ -356,7 +365,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     <button
                       key={item}
                       type="button"
-                      onClick={() => { setSelectedItem(item); setCustomItem(''); setCustomFoodTitle(''); }}
+                      onClick={() => { setSelectedItem(item); setCustomItem(''); setCustomTitle(''); }}
                       className={`p-3 rounded-xl text-sm text-left transition-colors ${
                         selectedItem === item && !customItem
                           ? 'bg-blue-50 border-blue-500 border text-blue-700 font-medium'
@@ -382,7 +391,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     type="text"
                     placeholder="Nombre del nuevo alimento"
                     value={newItemName}
-                    onChange={(e) => { setNewItemName(e.target.value); setCustomFoodTitle(e.target.value); }}
+                    onChange={(e) => { setNewItemName(e.target.value); setCustomTitle(e.target.value); }}
                     className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
                   <div className="flex gap-2">
@@ -510,7 +519,6 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
-
           {lastHistory && origin && destination && (
             <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
               <div className="flex items-center gap-2 text-xs text-blue-600 mb-1">
@@ -605,6 +613,52 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         </div>
       )}
 
+      {/* INGRESOS */}
+      {mainCategory === 'ingresos' && (
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-medium text-zinc-600 mb-1 block">Concepto</label>
+            <input
+              type="text"
+              placeholder="Sueldo, honorarios, venta..."
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-zinc-600 mb-1 block">Monto ({currencySymbol})</label>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          {lastHistory && customTitle && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div className="flex items-center gap-2 text-xs text-emerald-600 mb-1">
+                <History className="w-3.5 h-3.5" />
+                <span>Último ingreso similar</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
+                  {amount && (
+                    <span className="text-sm font-bold text-emerald-600">
+                      {currencySymbol}{parseFloat(amount).toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* NUEVA CATEGORÍA */}
       {mainCategory === 'nueva' && (
         <div className="space-y-4">
@@ -613,8 +667,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             <input
               type="text"
               placeholder="Nombre del registro"
-              value={customFoodTitle}
-              onChange={(e) => setCustomFoodTitle(e.target.value)}
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
@@ -661,13 +715,79 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         </div>
       )}
 
-      {/* ADD BUTTON */}
+      {/* Security collapsible */}
+      <div className="rounded-xl border border-zinc-200 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setSecurityOpen(!securityOpen)}
+          className="w-full flex items-center justify-between p-3 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-amber-500" />
+            <span className="text-sm font-medium text-zinc-900">Seguridad (contraseña)</span>
+          </div>
+          {securityOpen ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+        </button>
+        {securityOpen && (
+          <div className="px-3 pb-3 border-t border-zinc-100 pt-3 space-y-3">
+            <label className="flex items-center gap-2 text-sm text-zinc-700">
+              <input
+                type="checkbox"
+                checked={protectEnabled}
+                onChange={(e) => { setProtectEnabled(e.target.checked); if (!e.target.checked) { setUnlocked(true); setGatePassword(''); } }}
+                className="w-4 h-4"
+              />
+              Proteger ingresos con contraseña
+            </label>
+            {protectEnabled && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">Contraseña de registro</label>
+                  <input
+                    type="password"
+                    placeholder="Establecer contraseña"
+                    value={gatePassword}
+                    onChange={(e) => setGatePassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                  />
+                </div>
+                {incomeLocked && (
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-600 mb-1">Desbloquear para registrar ingreso</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Contraseña"
+                        value={enteredGatePassword}
+                        onChange={(e) => setEnteredGatePassword(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ok = (verifyPassword ? verifyPassword(enteredGatePassword) : enteredGatePassword === gatePassword);
+                          if (ok) setUnlocked(true);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium"
+                      >
+                        <Lock className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {!unlocked && enteredGatePassword && <p className="text-xs text-rose-500 mt-1">Contraseña incorrecta</p>}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
       {pendingItems.length > 0 && renderPendingItems()}
 
       <button
         type="button"
         onClick={handleAddToList}
-        disabled={!canAdd}
+        disabled={!canAdd || (mainCategory === 'ingresos' && incomeLocked)}
         className="w-full py-3 rounded-2xl border-2 border-dashed border-blue-300 text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Plus className="w-4 h-4" />
@@ -711,21 +831,22 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             {mainCategory === 'comida' && ' de Comida'}
             {mainCategory === 'transporte' && ' de Transporte'}
             {mainCategory === 'medicina' && ' de Medicina'}
+            {mainCategory === 'ingresos' && ' de Ingresos'}
             {mainCategory === 'nueva' && ' General'}
           </h3>
           <span className="text-xs text-zinc-500">
-            {transactions.filter((tx) => tx.category === mainCategory).length} registros
+            {transactions.filter((tx) => historyFilter(tx)).length} registros
           </span>
         </div>
         <div className="divide-y divide-zinc-100">
           {transactions
-            .filter((tx) => tx.category === mainCategory)
+            .filter((tx) => historyFilter(tx))
             .map((tx) => (
             <div key={tx.id} className="py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
-                  style={{ backgroundColor: categories.find(c => c.id === tx.category)?.color || '#8E8E93' }}
+                  style={{ backgroundColor: categories.find((c) => c.id === tx.category)?.color || '#8E8E93' }}
                 >
                   {tx.title.charAt(0)}
                 </div>
@@ -741,8 +862,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </span>
             </div>
           ))}
-          {transactions.filter((tx) => tx.category === mainCategory).length === 0 && (
-            <p className="py-8 text-center text-sm text-zinc-400">Sin registros de {mainCategory} aún</p>
+          {transactions.filter((tx) => historyFilter(tx)).length === 0 && (
+            <p className="py-8 text-center text-sm text-zinc-400">Sin registros aún</p>
           )}
         </div>
       </div>
