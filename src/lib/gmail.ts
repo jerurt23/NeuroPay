@@ -94,8 +94,14 @@ export interface GmailMessage {
   subject: string;
   snippet: string;
   date: string;
+  // Datos ya parseados por el backend (mismo parser que usa la app)
+  bankName?: string;
+  merchant?: string;
   amount?: number;
   currency?: string;
+  category?: string;
+  type?: 'expense' | 'income';
+  confidence?: number;
 }
 
 export interface GmailSyncResult {
@@ -150,12 +156,22 @@ export async function requestGoogleIdToken(): Promise<string> {
  *  Sincronizacion
  * ------------------------------------------------------------------ */
 
+/** URL del backend sin barra final. */
+function api(path: string): string {
+  return `${GMAIL_CONFIG.backendUrl.replace(/\/$/, '')}${path}`;
+}
+
 /**
  * Pide al backend los correos y devuelve los ya normalizados.
  * El backend es el unico que habla con la Gmail API.
+ *
+ * @param authorizationCode code devuelto por Google Identity Services
+ * @param idToken token de Firebase del usuario (para que el backend sepa quien eres)
  */
 export async function syncBankEmails(
   authorizationCode: string,
+  idToken: string,
+  email?: string,
   query: string = GMAIL_QUERIES.bankNotifications
 ): Promise<GmailSyncResult> {
   if (!GMAIL_CONFIG.backendUrl) {
@@ -163,18 +179,47 @@ export async function syncBankEmails(
   }
 
   try {
-    const res = await fetch(`${GMAIL_CONFIG.backendUrl.replace(/\/$/, '')}/gmail/sync`, {
+    const res = await fetch(api('/gmail/sync'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: authorizationCode, query }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ code: authorizationCode, email, query }),
     });
 
+    const data = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, messages: [], error: `El servidor respondio ${res.status}.` };
+      return { ok: false, messages: [], error: data?.error || `El servidor respondio ${res.status}.` };
     }
-    return (await res.json()) as GmailSyncResult;
+    return data as GmailSyncResult;
   } catch (e: any) {
     return { ok: false, messages: [], error: e?.message || 'No se pudo conectar con el servidor.' };
+  }
+}
+
+/**
+ * Sincroniza con la sesion ya guardada en el backend, sin volver a
+ * mostrar el popup de Google.
+ */
+export async function refreshBankEmails(
+  idToken: string,
+  query: string = GMAIL_QUERIES.bankNotifications
+): Promise<GmailSyncResult> {
+  if (!GMAIL_CONFIG.backendUrl) {
+    return { ok: false, messages: [], error: 'Backend no configurado.' };
+  }
+  try {
+    const res = await fetch(api('/gmail/refresh'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, messages: [], error: data?.error || `Error ${res.status}.` };
+    return data as GmailSyncResult;
+  } catch (e: any) {
+    return { ok: false, messages: [], error: e?.message };
   }
 }
 
@@ -183,12 +228,12 @@ export async function syncBankEmails(
  * OJO: esto consulta al backend si hay sesion activa. No guarda tokens
  * en el navegador.
  */
-export async function checkGmailSession(backendUrl = GMAIL_CONFIG.backendUrl): Promise<boolean> {
-  if (!backendUrl) return false;
+export async function checkGmailSession(idToken: string): Promise<boolean> {
+  if (!GMAIL_CONFIG.backendUrl || !idToken) return false;
   try {
-    const res = await fetch(`${backendUrl.replace(/\/$/, '')}/gmail/session`, {
+    const res = await fetch(api('/gmail/session'), {
       method: 'GET',
-      credentials: 'include',
+      headers: { Authorization: `Bearer ${idToken}` },
     });
     if (!res.ok) return false;
     const data = await res.json();
@@ -199,12 +244,12 @@ export async function checkGmailSession(backendUrl = GMAIL_CONFIG.backendUrl): P
 }
 
 /** Cierra la sesion de Gmail en el backend. */
-export async function disconnectGmail(backendUrl = GMAIL_CONFIG.backendUrl): Promise<boolean> {
-  if (!backendUrl) return false;
+export async function disconnectGmail(idToken: string): Promise<boolean> {
+  if (!GMAIL_CONFIG.backendUrl || !idToken) return false;
   try {
-    const res = await fetch(`${backendUrl.replace(/\/$/, '')}/gmail/session`, {
+    const res = await fetch(api('/gmail/session'), {
       method: 'DELETE',
-      credentials: 'include',
+      headers: { Authorization: `Bearer ${idToken}` },
     });
     return res.ok;
   } catch {
