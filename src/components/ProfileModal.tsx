@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Coins, User, Moon, Sun } from 'lucide-react';
-import { UserSettings } from '../types/index.ts';
+import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Coins, User, Moon, Sun, Trash2 } from 'lucide-react';
+import { UserSettings, Transaction, CategoryInfo } from '../types/index.ts';
 
 interface ProfileModalProps {
   open: boolean;
   onClose: () => void;
   settings: UserSettings;
+  transactions?: Transaction[];
+  categories?: CategoryInfo[];
   currentPassword: string;
   onUpdateSettings: (s: Partial<UserSettings>) => void;
   onChangePassword: (oldP: string, newP: string) => boolean;
+  onDeleteCustomCategory?: (id: string, deriveTo?: string) => void;
   onLogout: () => void;
 }
 
@@ -28,9 +31,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   open,
   onClose,
   settings,
+  transactions = [],
+  categories = [],
   currentPassword,
   onUpdateSettings,
   onChangePassword,
+  onDeleteCustomCategory,
   onLogout,
 }) => {
   const [name, setName] = useState(settings.userName || '');
@@ -38,6 +44,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [photo, setPhoto] = useState<string | null>(settings.userPhoto || null);
   const [savedBasic, setSavedBasic] = useState(false);
   const [openSections, setOpenSections] = useState<Set<Section>>(new Set());
+  const [openCatEdit, setOpenCatEdit] = useState(false);
+  const [deriveTargets, setDeriveTargets] = useState<Record<string, string>>({});
 
   const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -360,6 +368,76 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             )}
           </div>
+        </div>
+
+        <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setOpenCatEdit((v) => !v)}
+            className="w-full flex items-center justify-between p-5 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-zinc-500" />
+              <h3 className="font-bold text-zinc-900">Edicion de Categorias</h3>
+            </div>
+            <span className="text-xs text-zinc-400">{openCatEdit ? '^' : 'v'}</span>
+          </button>
+          {openCatEdit && (
+            <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
+              <p className="text-xs text-zinc-500 pt-3">
+                Verifica enlaces, deriva datos a otra categoria y elimina.
+              </p>
+              {(settings.customCategories || []).length === 0 && (
+                <p className="text-sm text-zinc-400">No hay categorias personalizadas.</p>
+              )}
+              {(settings.customCategories || []).map((cat) => {
+                const linkedTransactions = transactions.filter((t) => t.category === cat.id);
+                const linkedDashboard = settings.dashboardGroups?.[cat.name];
+                const target = deriveTargets[cat.id] || categories[0]?.id || 'comida';
+                return (
+                  <div key={cat.id} className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900">{cat.name}</p>
+                        <p className="text-xs text-zinc-500">
+                          {linkedTransactions.length} registro(s)
+                          {linkedDashboard ? ' · Vinculada a dashboard' : ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!window.confirm('Estas seguro que quieres eliminar esta categoria?')) return;
+                          onDeleteCustomCategory?.(cat.id, target);
+                        }}
+                        className="p-2 rounded-lg text-rose-500 hover:bg-rose-50"
+                        title="Eliminar categoria"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="text-xs text-zinc-500 block mb-1">Derivar datos a:</label>
+                      <select
+                        value={target}
+                        onChange={(e) => setDeriveTargets((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-sm"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                        {(settings.customCategories || [])
+                          .filter((x) => x.id !== cat.id)
+                          .map((x) => (
+                            <option key={x.id} value={x.id}>{x.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Logout */}

@@ -111,6 +111,12 @@ export default function App() {
   const handleSaveTransaction = (newTx: Transaction) => {
     setTransactions((prev) => [newTx, ...prev]);
   };
+  const handleDeleteTransaction = (id: string) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  };
+  const handleUpdateTransaction = (updated: Transaction) => {
+    setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  };
 
   if (!authReady) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-500">Cargando...</div>;
@@ -153,6 +159,10 @@ export default function App() {
             verifyPassword={(p) => p === 'AppleSecure2026!'}
             dashboardGroups={settings.dashboardGroups}
             onUpdateDashboardGroups={(g) => setSettings((s) => ({ ...s, dashboardGroups: g }))}
+            customCategories={settings.customCategories}
+            onUpdateCustomCategories={(cats) => setSettings((s) => ({ ...s, customCategories: cats }))}
+            onDeleteTransaction={handleDeleteTransaction}
+            onUpdateTransaction={handleUpdateTransaction}
             onSave={handleSaveTransaction}
           />
         )}
@@ -200,6 +210,8 @@ export default function App() {
         open={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         settings={settings}
+        transactions={transactions}
+        categories={categories}
         currentPassword={settings.accountPassword || 'AppleSecure2026!'}
         onUpdateSettings={(s) => setSettings((prev) => ({ ...prev, ...s }))}
         onChangePassword={(oldP, newP) => {
@@ -207,6 +219,15 @@ export default function App() {
           if (oldP !== current) return false;
           setSettings((prev) => ({ ...prev, accountPassword: newP }));
           return true;
+        }}
+        onDeleteCustomCategory={(id, deriveTo) => {
+          const cat = settings.customCategories?.find((c) => c.id === id);
+          setTransactions((prev) => prev.map((t) => (t.category === id ? { ...t, category: deriveTo || 'otro' } : t)));
+          setSettings((prev) => {
+            const groups = { ...(prev.dashboardGroups || {}) };
+            if (cat?.name) delete groups[cat.name];
+            return { ...prev, customCategories: (prev.customCategories || []).filter((c) => c.id !== id), dashboardGroups: groups };
+          });
         }}
         onLogout={handleLogout}
       />

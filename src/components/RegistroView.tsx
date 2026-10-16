@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, History, Save, Check, Loader2, Trash2, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
+import { Plus, History, Save, Check, Loader2, Trash2, Pencil, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
 
 interface RegistroViewProps {
@@ -7,6 +7,8 @@ interface RegistroViewProps {
   categories: CategoryInfo[];
   currencySymbol: string;
   verifyPassword?: (p: string) => boolean;
+  onDeleteTransaction?: (id: string) => void;
+  onUpdateTransaction?: (tx: Transaction) => void;
   dashboardGroups?: Record<string, string>;
   onUpdateDashboardGroups?: (groups: Record<string, string>) => void;
   customCategories?: any[];
@@ -58,6 +60,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   categories,
   currencySymbol,
   verifyPassword,
+  onDeleteTransaction,
+  onUpdateTransaction,
   dashboardGroups,
   onUpdateDashboardGroups,
   customCategories,
@@ -93,6 +97,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [animationStep, setAnimationStep] = useState<'none' | 'create' | 'save' | 'done'>('none');
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editDate, setEditDate] = useState('');
 
   // password protection for incomes
   const [securityOpen, setSecurityOpen] = useState(false);
@@ -416,6 +424,70 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             {animationStep === 'create' ? 'Se creo una nueva categoria' : animationStep === 'save' ? 'Se registro correctamente tus datos' : 'Procesando...'}
           </p>
           <p className="text-sm text-zinc-500">{dashboardMessage}</p>
+        </div>
+      </div>
+    );
+  }
+  if (editingTx) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl">
+        <div className="w-full max-w-md bg-white/90 rounded-3xl p-6 border border-white/60 shadow-2xl space-y-4 backdrop-blur-xl">
+          <h2 className="text-lg font-bold text-zinc-900">Editar Registro</h2>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 mb-1">Titulo</label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 mb-1">Monto</label>
+            <input
+              type="number"
+              step="0.01"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha</label>
+            <input
+              type="date"
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEditingTx(null)}
+              className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-zinc-700 text-sm font-medium"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!window.confirm('Estas seguro que quieres editar?')) return;
+                if (!editingTx) return;
+                const updated: Transaction = {
+                  ...editingTx,
+                  title: editTitle || editingTx.title,
+                  amount: parseFloat(editAmount) || editingTx.amount,
+                  date: editDate || editingTx.date,
+                };
+                onUpdateTransaction?.(updated);
+                setEditingTx(null);
+              }}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium"
+            >
+              Guardar cambios
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1270,9 +1342,40 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   </p>
                 </div>
               </div>
-              <span className={`text-sm font-bold flex-shrink-0 ${tx.type === 'expense' ? 'text-zinc-900' : 'text-emerald-600'}`}>
-                {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{tx.amount.toFixed(2)}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-sm font-bold ${tx.type === 'expense' ? 'text-zinc-900' : 'text-emerald-600'}`}>
+                  {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{tx.amount.toFixed(2)}
+                </span>
+                {onUpdateTransaction && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm('Estas seguro que quieres editar?')) return;
+                      setEditingTx(tx);
+                      setEditTitle(tx.title);
+                      setEditAmount(String(tx.amount));
+                      setEditDate(tx.date);
+                    }}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50"
+                    title="Editar"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
+                {onDeleteTransaction && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm('Estas seguro que quieres eliminar?')) return;
+                      onDeleteTransaction(tx.id);
+                    }}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
           {transactions.filter((tx) => historyFilter(tx)).length === 0 && (

@@ -141,6 +141,7 @@ export interface UserSettings {
   userPhoto?: string;
   accountPassword?: string;
   dashboardGroups?: Record<string, string>;
+  customCategories?: CustomCategoryDef[];
   chartType?: 'bar' | 'line';
   countryCode?: string;
 }
@@ -154,3 +155,6 @@ export interface CustomFieldDef {
   conditionField?: string;
   conditionValue?: boolean;
 }
+
+export interface CustomCategoryDef { id: string; name: string; includeDate: boolean; fields: any[]; }
+
