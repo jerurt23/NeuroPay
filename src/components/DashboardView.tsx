@@ -245,25 +245,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* ---------- GRAFICO: BARRAS (agrupadas) ---------- */}
         {localChartType === 'bar' && (
-          <div className="flex items-end justify-between gap-1 sm:gap-2 h-44 pt-2">
+          <div className="flex items-stretch justify-between gap-1 sm:gap-2 h-44 pt-2">
             {chartData.map((d, i) => {
               const hInc = (d.income / maxChartValue) * 100;
               const hExp = (d.expense / maxChartValue) * 100;
+              const hasData = d.income > 0 || d.expense > 0;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                  <div className="flex items-end gap-0.5 w-full h-full justify-center">
+                  {/* flex-1 + min-h-0: el area de barras ocupa todo el alto disponible */}
+                  <div className="flex-1 min-h-0 w-full flex items-end justify-center gap-0.5">
                     <div
-                      className="w-1/2 max-w-4 rounded-t-md transition-all duration-500"
+                      className="w-1/2 max-w-5 rounded-t-md transition-all duration-500"
                       style={{ height: `${Math.max(hInc, 1)}%`, backgroundColor: INCOME_COLOR }}
                       title={`Ingresos: ${currencySymbol}${d.income.toFixed(2)}`}
                     />
                     <div
-                      className="w-1/2 max-w-4 rounded-t-md transition-all duration-500"
+                      className="w-1/2 max-w-5 rounded-t-md transition-all duration-500"
                       style={{ height: `${Math.max(hExp, 1)}%`, backgroundColor: EXPENSE_COLOR }}
                       title={`Egresos: ${currencySymbol}${d.expense.toFixed(2)}`}
                     />
                   </div>
-                  <span className="text-[10px] text-muted truncate w-full text-center">{d.label}</span>
+                  <span
+                    className={`text-[10px] truncate w-full text-center ${
+                      hasData ? 'text-muted' : 'text-zinc-300'
+                    }`}
+                  >
+                    {d.label}
+                  </span>
                 </div>
               );
             })}
