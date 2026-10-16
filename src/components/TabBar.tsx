@@ -35,7 +35,12 @@ export const TabBar: React.FC<TabBarProps> = ({
   return (
     <nav
       aria-label="Navegación principal"
-      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md"
+      className="fixed left-1/2 -translate-x-1/2 z-50 max-w-md"
+      style={{
+        // Sube sobre el indicador de inicio del iPhone.
+        bottom: 'calc(1rem + var(--safe-bottom))',
+        width: 'calc(100% - 2rem - var(--safe-left) - var(--safe-right))',
+      }}
     >
       <div className="ios-glass-card relative flex items-center justify-around px-1.5 sm:px-2 py-1.5 rounded-[28px]">
         {visibleTabs.map((tab) => {

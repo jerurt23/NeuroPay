@@ -222,7 +222,16 @@ export default function App() {
         onOpenProfile={() => setIsProfileOpen(true)}
       />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24">
+      <main
+        className="flex-1 max-w-5xl w-full mx-auto py-4 sm:py-6"
+        style={{
+          paddingLeft: 'calc(1rem + var(--safe-left))',
+          paddingRight: 'calc(1rem + var(--safe-right))',
+          // 6rem deja sitio a la barra de pestañas; se suma el inset inferior
+          // para que la ultima tarjeta no quede bajo el indicador de inicio.
+          paddingBottom: 'calc(6rem + var(--safe-bottom))',
+        }}
+      >
         {activeTab === 'dashboard' && (
           <DashboardView
             transactions={transactions}

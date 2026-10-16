@@ -65,14 +65,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  };
 
  return (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl">
+ <div className="fixed inset-0 z-50 safe-overlay flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl">
  <div
  className="w-full max-w-full sm:max-w-md surface-card border border-white/20 rounded-[32px] p-6 sm:p-7 shadow-2xl backdrop-blur-2xl relative animate-in fade-in zoom-in-95 duration-200"
  >
  <button
  type="button"
  onClick={onClose}
- className="absolute top-5 right-5 p-2 rounded-full text-zinc-400 hover:text-muted:text-zinc-200"
+ className="absolute p-2 rounded-full text-zinc-400 hover:text-muted:text-zinc-200"
+ style={{ top: 'calc(1.25rem + var(--safe-top))', right: 'calc(1.25rem + var(--safe-right))' }}
  >
  <X className="w-5 h-5" />
  </button>

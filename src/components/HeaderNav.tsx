@@ -17,18 +17,26 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   userPhoto,
 }) => {
   return (
-    <header className="ios-glass sticky top-0 z-40 w-full border-b border-line px-4 sm:px-6 py-3">
+    <header
+      className="ios-glass sticky top-0 z-40 w-full border-b border-line"
+      style={{
+        paddingTop: 'calc(0.75rem + var(--safe-top))',
+        paddingBottom: '0.75rem',
+        paddingLeft: 'calc(1rem + var(--safe-left))',
+        paddingRight: 'calc(1rem + var(--safe-right))',
+      }}
+    >
       <div className="max-w-5xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
             N
           </div>
-          <h1 className="text-lg font-bold text-main tracking-tight">
+          <h1 className="text-lg font-bold text-main tracking-tight truncate">
             NEUROPAY
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
             onClick={onOpenNotifications}
