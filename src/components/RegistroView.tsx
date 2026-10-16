@@ -26,6 +26,8 @@ interface PendingItem {
   medicineBrand?: string;
   transportOrigin?: string;
   transportDestination?: string;
+  customFields?: Record<string, any>;
+  customSchema?: { includeDate: boolean; fields: any[] };
   historyAmount?: number;
   historyDate?: string;
 }
@@ -69,6 +71,13 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [newItemCategory, setNewItemCategory] = useState('');
   const [showNewItemInput, setShowNewItemInput] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
+  const [includeDate, setIncludeDate] = useState(true);
+  const [customFieldDefs, setCustomFieldDefs] = useState<any[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, any>>({});
+  const [newFieldName, setNewFieldName] = useState('');
+  const [newFieldType, setNewFieldType] = useState('char');
+  const [newFieldConditionField, setNewFieldConditionField] = useState('');
+  const [newFieldConditionValue, setNewFieldConditionValue] = useState(true);
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
 
@@ -152,12 +161,17 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       category = 'otro';
     }
 
+    const customFieldData: Record<string, any> = { ...customValues };
+    if (mainCategory === 'nueva' && includeDate && customFieldData.__date__ === undefined) {
+      customFieldData.__date__ = new Date().toISOString().split('T')[0];
+    }
+
     const newItem: PendingItem = {
       id: `pending_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       category,
       subcategory: subcat,
       itemName,
-      amount: parsedAmount,
+      amount: mainCategory === 'nueva' ? customFieldDefs.filter((f: any) => f.type === 'float').reduce((s: number, f: any) => s + (parseFloat(customValues[f.id]) || 0), 0) : parsedAmount,
       quantity: parseFloat(quantity) || 1,
       unit,
       date: new Date().toISOString().split('T')[0],
@@ -165,6 +179,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       medicineBrand: brand,
       transportOrigin: originVal,
       transportDestination: destVal,
+      customFields: mainCategory === 'nueva' ? customFieldData : undefined,
+      customSchema: mainCategory === 'nueva' ? { includeDate, fields: customFieldDefs } : undefined,
       historyAmount: hist?.amount,
       historyDate: hist?.date,
     };
@@ -176,6 +192,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     setSelectedItem('');
     setCustomItem('');
     setCustomTitle('');
+    setCustomValues({});
     setOrigin('');
     setDestination('');
     setMedicineName('');
@@ -212,7 +229,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           amount: item.amount,
           type: item.txType,
           category: item.category || 'otro',
-          date: item.date,
+          date: (item.customFields && item.customFields.__date__) ? item.customFields.__date__ : item.date,
           time: new Date().toTimeString().slice(0, 5),
           quantity: item.quantity,
           unit: item.unit,
@@ -221,6 +238,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           tags: item.subcategory ? [item.subcategory] : [],
           transportDetails,
           medicineDetails,
+          customFields: item.customFields,
+          customSchema: item.customSchema,
         };
 
         onSave(tx);
@@ -303,7 +322,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
   const historyFilter = (tx: Transaction) => {
     if (mainCategory === 'ingresos') return tx.type === 'income';
-    if (mainCategory === 'nueva') return false;
+    if (mainCategory === 'nueva') return tx.category === 'otro';
     return tx.category === mainCategory;
   };
 
@@ -662,56 +681,196 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {/* NUEVA CATEGORÍA */}
       {mainCategory === 'nueva' && (
         <div className="space-y-4">
-          <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Nombre</label>
-            <input
-              type="text"
-              placeholder="Nombre del registro"
-              value={customTitle}
-              onChange={(e) => setCustomTitle(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio ({currencySymbol})</label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Cantidad</label>
-            <div className="flex gap-2">
+          <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
+            <div>
+              <label className="text-xs font-medium text-zinc-600 mb-1 block">Nombre de nueva categoria de registro</label>
               <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                type="text"
+                placeholder="Mi registro personalizado"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
               />
-              <div className="flex gap-0.5 rounded-r-xl overflow-hidden border border-l-0 border-zinc-200">
-                {(['unidades', 'kg', 'g'] as UnitType[]).map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    onClick={() => setUnit(u)}
-                    className={`px-3 py-2.5 text-xs font-medium transition-colors ${
-                      unit === u
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
-                    }`}
-                  >
-                    {u === 'unidades' ? 'ud' : u}
-                  </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-zinc-600">Incluir fecha de creacion?</label>
+              <button
+                type="button"
+                onClick={() => setIncludeDate(!includeDate)}
+                className={`w-11 h-6 rounded-full transition-colors ${includeDate ? 'bg-blue-600' : 'bg-zinc-300'}`}
+              >
+                <span
+                  className={`block w-5 h-5 bg-white rounded-full shadow transition-transform mt-0.5 ${includeDate ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-zinc-600 mb-1 block">Agregar campo</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nombre del campo"
+                  value={newFieldName}
+                  onChange={(e) => setNewFieldName(e.target.value)}
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                />
+                <select
+                  value={newFieldType}
+                  onChange={(e) => setNewFieldType(e.target.value)}
+                  className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                >
+                  <option value="char">char (texto)</option>
+                  <option value="int">int (numero entero)</option>
+                  <option value="float">float (moneda/monto)</option>
+                  <option value="boolean">boolean (si/no)</option>
+                </select>
+              </div>
+              {customFieldDefs.some(f => f.type === 'boolean') && (
+                <div className="mt-2 space-y-1">
+                  <label className="text-xs text-zinc-500">Condicion opcional: mostrar este campo si...</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={newFieldConditionField}
+                      onChange={(e) => setNewFieldConditionField(e.target.value)}
+                      className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                    >
+                      <option value="">Sin condicion</option>
+                      {customFieldDefs.filter(f => f.type === 'boolean').map(f => (
+                        <option key={f.id} value={f.id}>{f.name}</option>
+                      ))}
+                    </select>
+                    {newFieldConditionField && (
+                      <select
+                        value={String(newFieldConditionValue)}
+                        onChange={(e) => setNewFieldConditionValue(e.target.value === 'true')}
+                        className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                      >
+                        <option value="true">es verdadero</option>
+                        <option value="false">es falso</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newFieldName.trim()) return;
+                  const id = 'field_' + Date.now();
+                  setCustomFieldDefs(prev => [...prev, {
+                    id,
+                    name: newFieldName.trim(),
+                    type: newFieldType,
+                    conditionField: newFieldConditionField || undefined,
+                    conditionValue: newFieldConditionField ? newFieldConditionValue : undefined,
+                  }]);
+                  setNewFieldName('');
+                  setNewFieldConditionField('');
+                  setNewFieldConditionValue(true);
+                }}
+                className="mt-2 w-full py-2 rounded-xl border border-dashed border-blue-300 text-blue-600 text-sm font-medium hover:bg-blue-50"
+              >
+                + Agregar campo
+              </button>
+            </div>
+
+            {customFieldDefs.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-zinc-600">Campos configurados:</p>
+                {customFieldDefs.map(f => (
+                  <div key={f.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-zinc-200 text-sm">
+                    <span>{f.name} <span className="text-xs text-zinc-400">({f.type})</span>
+                      {f.conditionField && (
+                        <span className="text-xs text-amber-500 ml-1">
+                          si {customFieldDefs.find(x => x.id === f.conditionField)?.name} {f.conditionValue ? 'verdadero' : 'falso'}
+                        </span>
+                      )}
+                    </span>
+                    <button type="button" onClick={() => setCustomFieldDefs(prev => prev.filter(x => x.id !== f.id))} className="text-zinc-400 hover:text-rose-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
+
+          {customTitle.trim() && customFieldDefs.length > 0 && (
+            <div className="p-3 rounded-xl bg-white border border-zinc-200 space-y-3">
+              <p className="text-xs font-medium text-zinc-600">Registrar datos</p>
+              {includeDate && (
+                <div>
+                  <label className="text-xs font-medium text-zinc-600 mb-1 block">Fecha de creacion</label>
+                  <input
+                    type="date"
+                    value={customValues.__date__ || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setCustomValues(v => ({ ...v, __date__: e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                  />
+                </div>
+              )}
+              {customFieldDefs.map(f => {
+                if (f.conditionField) {
+                  const condVal = customValues[f.conditionField];
+                  const expected = f.conditionValue;
+                  if (Boolean(condVal) !== expected) return null;
+                }
+                return (
+                  <div key={f.id}>
+                    <label className="text-xs font-medium text-zinc-600 mb-1 block">{f.name}</label>
+                    {f.type === 'char' && (
+                      <input
+                        type="text"
+                        value={customValues[f.id] ?? ''}
+                        onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                      />
+                    )}
+                    {f.type === 'int' && (
+                      <input
+                        type="number"
+                        step="1"
+                        value={customValues[f.id] ?? ''}
+                        onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                      />
+                    )}
+                    {f.type === 'float' && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={customValues[f.id] ?? ''}
+                        onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                      />
+                    )}
+                    {f.type === 'boolean' && (
+                      <label className="flex items-center gap-2 text-sm text-zinc-700">
+                        <input
+                          type="checkbox"
+                          checked={!!customValues[f.id]}
+                          onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.checked }))}
+                          className="w-4 h-4"
+                        />
+                        {f.name}
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={handleAddToList}
+                disabled={!customTitle.trim()}
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-blue-300 text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar a la lista
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -870,4 +1029,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     </div>
   );
 };
+
+
+
+
 
