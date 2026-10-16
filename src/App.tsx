@@ -236,6 +236,8 @@ export default function App() {
           <DashboardView
             transactions={transactions}
             categories={allCategories}
+            customCategories={settings.customCategories}
+            dashboardGroups={settings.dashboardGroups}
             budgets={budgets}
             bankEmails={[]}
             currencySymbol={settings.currencySymbol}
