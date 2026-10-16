@@ -34,6 +34,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const localChartType = chartType;
 
+  // Cerrar el menu con Escape y bloquear el scroll de fondo
+  React.useEffect(() => {
+    if (!showTypePicker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowTypePicker(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [showTypePicker]);
+
   const totals = calculateTotals(transactions);
 
   const chartData = useMemo(() => {
@@ -97,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Balance Card - Full Width */}
-      <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+      <div className={`p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white ${showTypePicker ? 'focus-dimmed' : ''}`}>
         <p className="text-sm font-medium text-blue-100">Balance Neto</p>
         <h2 className="text-3xl sm:text-4xl font-bold mt-1">
           {currencySymbol}{totals.netBalance.toFixed(2)}
@@ -121,7 +136,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Chart */}
-      <div className="p-5 rounded-2xl surface-card border-line">
+      <div className={`p-5 rounded-2xl surface-card border-line relative ${showTypePicker ? 'chart-bubble' : ''}`}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
@@ -129,47 +144,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             {/* Selector de tipo de grafico */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowTypePicker((v) => !v)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-100 text-muted hover-surface text-xs font-medium transition-colors"
-                aria-label="Cambiar tipo de grafico"
-              >
-                {localChartType === 'bar' && <BarChart3 className="w-3.5 h-3.5" />}
-                {localChartType === 'line' && <LineChart className="w-3.5 h-3.5" />}
-                {localChartType === 'stacked' && <Layers className="w-3.5 h-3.5" />}
-                {localChartType === 'pie' && <PieChart className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">
-                  {localChartType === 'bar' ? 'Barras' : localChartType === 'line' ? 'Lineas' : localChartType === 'stacked' ? 'Apiladas' : 'Circular'}
-                </span>
-              </button>
-              {showTypePicker && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowTypePicker(false)} />
-                  <div className="absolute right-0 mt-1 z-20 w-40 surface-card border-line rounded-xl shadow-xl overflow-hidden">
-                    {([
-                      { v: 'bar' as ChartType, label: 'Barras', Icon: BarChart3 },
-                      { v: 'line' as ChartType, label: 'Lineas', Icon: LineChart },
-                      { v: 'stacked' as ChartType, label: 'Apiladas', Icon: Layers },
-                      { v: 'pie' as ChartType, label: 'Circular', Icon: PieChart },
-                    ]).map(({ v, label, Icon }) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => { onChartTypeChange?.(v); setShowTypePicker(false); }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors ${
-                          localChartType === v ? 'bg-blue-50 text-blue-600' : 'text-main hover-surface'
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowTypePicker(true)}
+              aria-label="Cambiar tipo de grafico"
+              aria-expanded={showTypePicker}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                showTypePicker ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-muted hover-surface'
+              }`}
+            >
+              {localChartType === 'bar' && <BarChart3 className="w-3.5 h-3.5 flex-shrink-0" />}
+              {localChartType === 'line' && <LineChart className="w-3.5 h-3.5 flex-shrink-0" />}
+              {localChartType === 'stacked' && <Layers className="w-3.5 h-3.5 flex-shrink-0" />}
+              {localChartType === 'pie' && <PieChart className="w-3.5 h-3.5 flex-shrink-0" />}
+              <span className="hidden sm:inline">
+                {localChartType === 'bar' ? 'Barras' : localChartType === 'line' ? 'Lineas' : localChartType === 'stacked' ? 'Apiladas' : 'Circular'}
+              </span>
+            </button>
 
             {/* Periodo */}
             <div className="flex gap-1 bg-zinc-100 rounded-lg p-0.5 flex-1 sm:flex-none justify-between sm:justify-start">
@@ -404,7 +395,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Recent Transactions */}
-      <div className="p-5 rounded-2xl bg-white border border-line">
+      <div className={`p-5 rounded-2xl bg-white border border-line ${showTypePicker ? 'focus-dimmed' : ''}`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-main">Últimos Movimientos</h3>
           <button
@@ -440,6 +431,61 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </div>
       </div>
+
+      {/* Menu central de tipos de grafico */}
+      {showTypePicker && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tipo de grafico"
+        >
+          {/* Fondo con blur: al pulsarlo se cierra */}
+          <div
+            className="absolute inset-0 bg-zinc-900/25 backdrop-blur-sm"
+            onClick={() => setShowTypePicker(false)}
+          />
+
+          <div className="chart-menu-pop relative w-full max-w-[min(18rem,100%)] p-2 surface-card border-line rounded-2xl shadow-2xl">
+            <p className="px-2 pt-1 pb-2 text-[11px] font-semibold text-muted uppercase tracking-wide">
+              Tipo de grafico
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {([
+                { v: 'bar' as ChartType, label: 'Barras', Icon: BarChart3 },
+                { v: 'line' as ChartType, label: 'Lineas', Icon: LineChart },
+                { v: 'stacked' as ChartType, label: 'Apiladas', Icon: Layers },
+                { v: 'pie' as ChartType, label: 'Circular', Icon: PieChart },
+              ]).map(({ v, label, Icon }) => {
+                const active = localChartType === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => { onChartTypeChange?.(v); setShowTypePicker(false); }}
+                    aria-pressed={active}
+                    className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-medium transition-all ${
+                      active
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-zinc-100 text-main hover-surface active:scale-95'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span className="truncate w-full text-center">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTypePicker(false)}
+              className="w-full mt-1.5 py-2 rounded-xl text-xs font-medium text-muted hover-surface"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
