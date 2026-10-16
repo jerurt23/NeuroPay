@@ -58,24 +58,21 @@ export default function App() {
   const isRemoteSync = useRef(false);
   const isLoaded = useRef(false);
 
-  // Filtro de temperatura de color (similar a True Tone)
-  const tempFilter = useMemo(() => {
-    if (settings.trueTone) {
-      return 'sepia(0.09) saturate(1.08) hue-rotate(-3deg) brightness(0.99)';
-    }
-    switch (settings.colorTemperature) {
-      case 'warm':
-        return 'sepia(0.18) saturate(1.12) hue-rotate(-8deg) brightness(0.98)';
-      case 'cool':
-        return 'saturate(1.06) hue-rotate(8deg) brightness(1.01)';
-      default:
-        return 'none';
-    }
+  // Temperatura de color (similar a True Tone). Se aplica como capa de
+  // tinte translucida, no como filtro CSS: ver nota en index.css.
+  const tempTint = useMemo(() => {
+    if (settings.trueTone) return 'warm';
+    return settings.colorTemperature || 'off';
   }, [settings.trueTone, settings.colorTemperature]);
 
+  // Filtro suave adicional para el modo True Tone
   useEffect(() => {
-    document.documentElement.style.setProperty('--truetone-filter', tempFilter);
-  }, [tempFilter]);
+    const filter =
+      settings.trueTone && tempTint === 'warm'
+        ? 'sepia(0.06) saturate(1.05) brightness(0.995)'
+        : 'none';
+    document.documentElement.style.setProperty('--truetone-filter', filter);
+  }, [settings.trueTone, tempTint]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -203,6 +200,11 @@ export default function App() {
   }
 
   return (
+    <>
+    {/* Capa de temperatura de color. pointer-events:none para no
+        bloquear los toques en botones y enlaces. */}
+    {tempTint !== 'off' && <div className={`temp-overlay ${tempTint}`} aria-hidden="true" />}
+
     <div className="true-tone-layer min-h-screen flex flex-col surface-page text-main">
       <HeaderNav
         userName={settings.userName || firebaseUser.displayName || ''}
@@ -307,5 +309,6 @@ export default function App() {
         onLogout={handleLogout}
       />
     </div>
+    </>
   );
 }

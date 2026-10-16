@@ -50,7 +50,35 @@
   }
 }
 
-/* ---------- Filtro True Tone (temperatura de color) ---------- */
+/* ---------- Temperatura de color (similar a True Tone) ----------
+ *
+ * Se usa una capa de tinte translucida y NO un filtro CSS porque los
+ * filtros no pueden colorear zonas blancas: el blanco no tiene matiz,
+ * asi que hue-rotate() sobre un blanco no produce ningun cambio.
+ * Como casi toda la app es blanca, un filtro nunca se notaria.
+ *
+ * Con una capa translucida, un blanco puro (255,255,255) bajo un azul
+ * al 10% queda en rgb(241,247,255): un celeste suave, sin alterar los
+ * colores de marca ni el contraste del texto.
+ */
+.temp-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Celeste / azul suave */
+.temp-overlay.cool {
+  background-color: rgba(96, 165, 250, 0.13);
+}
+
+/* Calido / suave crema */
+.temp-overlay.warm {
+  background-color: rgba(251, 191, 146, 0.13);
+}
+
 /* Evita que los filtros se apliquen dos veces si se anidan */
 .true-tone-layer {
   filter: var(--truetone-filter);
