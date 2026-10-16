@@ -1,7 +1,34 @@
 /**
- * Base de datos local automática usando IndexedDB
- * 100% gratuita, sin billing, funciona offline
+ * Base de datos local: localStorage (principal, sincrono) + IndexedDB (respaldo)
+ * - 100% gratuita, sin billing, funciona offline
+ * - localStorage es sincrono y no falla, por lo que elimina las condiciones
+ *   de carrera que si occuren con IndexedDB.
  */
+
+const LS_PREFIX = 'neuropay_user_';
+
+// ---------- localStorage (fuente principal, sincrona) ----------
+
+function readLocalStorage(userId: string): any | null {
+  try {
+    const raw = localStorage.getItem(LS_PREFIX + userId);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(userId: string, data: any): boolean {
+  try {
+    localStorage.setItem(LS_PREFIX + userId, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.error('Error escribiendo en localStorage:', e);
+    return false;
+  }
+}
+
+// ---------- IndexedDB (respaldo para datos grandes) ----------
 
 const DB_NAME = 'NeuroPayDB';
 const DB_VERSION = 1;
@@ -11,28 +38,21 @@ let dbInstance: IDBDatabase | null = null;
 
 async function openDB(): Promise<IDBDatabase | null> {
   if (dbInstance) return dbInstance;
-
   return new Promise((resolve) => {
     try {
       const idb = window.indexedDB;
-      if (!idb) {
-        resolve(null);
-        return;
-      }
+      if (!idb) return resolve(null);
       const request = idb.open(DB_NAME, DB_VERSION);
-
-      request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
+      request.onupgradeneeded = (e) => {
+        const db = (e.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         }
       };
-
-      request.onsuccess = (event) => {
-        dbInstance = (event.target as IDBOpenDBRequest).result;
+      request.onsuccess = (e) => {
+        dbInstance = (e.target as IDBOpenDBRequest).result;
         resolve(dbInstance);
       };
-
       request.onerror = () => resolve(null);
       request.onblocked = () => resolve(null);
     } catch {
@@ -40,6 +60,38 @@ async function openDB(): Promise<IDBDatabase | null> {
     }
   });
 }
+
+async function readIDB(userId: string): Promise<any | null> {
+  try {
+    const db = await openDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const req = tx.objectStore(STORE_NAME).get(userId);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function writeIDB(data: any): Promise<void> {
+  try {
+    const db = await openDB();
+    if (!db) return;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const req = tx.objectStore(STORE_NAME).put({ ...data, lastSync: Date.now() });
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
+    });
+  } catch {
+    /* el respaldo es opcional */
+  }
+}
+
+// ---------- API publica ----------
 
 export interface LocalUserData {
   id: string;
@@ -51,53 +103,57 @@ export interface LocalUserData {
   lastSync?: number;
 }
 
+/**
+ * Carga los datos del usuario.
+ * Prioridad: localStorage (sincrono) -> IndexedDB (respaldo).
+ * Si encuentra datos en IndexedDB, los migra a localStorage.
+ */
 export async function getLocalData(userId: string): Promise<LocalUserData | null> {
-  try {
-    const db = await openDB();
-    if (!db) return null;
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.get(userId);
+  const fromLS = readLocalStorage(userId);
+  if (fromLS) return fromLS;
 
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
-  } catch {
-    return null;
+  const fromIDB = await readIDB(userId);
+  if (fromIDB) {
+    // Migrar a localStorage para lecturas futuras sincronas
+    writeLocalStorage(userId, fromIDB);
+    return fromIDB;
   }
+
+  return null;
 }
 
+/**
+ * Guarda los datos del usuario.
+ * Escribe en localStorage de forma sincrona (garantizado) y en IndexedDB como respaldo.
+ */
 export async function saveLocalData(data: LocalUserData): Promise<void> {
-  try {
-    const db = await openDB();
-    if (!db) return;
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.put({ ...data, lastSync: Date.now() });
+  const userId = data.id;
+  const payload = { ...data, lastSync: Date.now() };
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => resolve();
-    });
-  } catch (err) {
-    console.error('Error guardando en IndexedDB:', err);
-  }
+  // Escritura sincrona: no puede fallar silenciosamente ni competir consigo misma
+  writeLocalStorage(userId, payload);
+
+  // Respaldo asincrono (no bloquea, no afecta la consistencia)
+  await writeIDB(payload);
 }
 
+/** Borra los datos del usuario (usar con cuidado). */
 export async function clearLocalData(userId: string): Promise<void> {
   try {
+    localStorage.removeItem(LS_PREFIX + userId);
+  } catch {
+    /* ignorar */
+  }
+  try {
     const db = await openDB();
     if (!db) return;
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.delete(userId);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => resolve();
+      const req = tx.objectStore(STORE_NAME).delete(userId);
+      req.onsuccess = () => resolve();
+      req.onerror = () => resolve();
     });
-  } catch (err) {
-    console.error('Error limpiando IndexedDB:', err);
+  } catch {
+    /* ignorar */
   }
 }

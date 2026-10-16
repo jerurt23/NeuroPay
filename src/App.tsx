@@ -66,12 +66,11 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Load + subscribe user doc (Firebase + IndexedDB local)
+  // Load data from local DB. Firebase is only used if billing is enabled.
   useEffect(() => {
     if (!firebaseUser) return;
     const userId = firebaseUser.uid;
 
-    // Cargar de IndexedDB primero (instantáneo, offline)
     getLocalData(userId).then((local) => {
       if (local) {
         if (local.settings) setSettings({ ...INITIAL_SETTINGS, ...local.settings });
@@ -80,7 +79,7 @@ export default function App() {
         if (local.tabs) setTabs(local.tabs);
         if (local.widgets) setWidgets(local.widgets);
       } else {
-        // Primera vez: guardar datos iniciales en IndexedDB
+        // Primera vez: persistir los datos iniciales
         saveLocalData({
           id: userId,
           settings: INITIAL_SETTINGS,
@@ -94,13 +93,13 @@ export default function App() {
       isLoaded.current = true;
     });
 
-    // Luego intentar Firebase (si hay billing)
+    // Firebase solo si el proyecto tiene billing. Sin billing la promesa
+    // falla y el callback de error deja la app funcionando con la BD local.
     const ref = doc(db, 'users', userId);
     const unsub = onSnapshot(ref, (snap) => {
       isRemoteSync.current = true;
       if (snap.exists()) {
         const data = snap.data() as any;
-        // Solo actualizar si hay datos reales (no vacíos)
         if (data.settings && Object.keys(data.settings).length > 0) {
           setSettings({ ...INITIAL_SETTINGS, ...data.settings });
         }
@@ -115,8 +114,7 @@ export default function App() {
       }
       setTimeout(() => (isRemoteSync.current = false), 0);
     }, (err) => {
-      // Si Firebase falla (sin billing), usar solo IndexedDB
-      console.warn('Firebase no disponible, usando base de datos local:', err);
+      console.warn('Firebase no disponible (sin billing). Usando base de datos local.', err?.code || err);
     });
 
     return () => unsub();
@@ -138,12 +136,12 @@ export default function App() {
       widgets,
     });
 
-    // Intentar guardar en Firebase (si hay billing)
+    // Intentar guardar en Firebase (solo funciona con billing)
     try {
       const ref = doc(db, 'users', userId);
       await setDoc(ref, { settings, transactions, budgets, tabs, widgets }, { merge: true });
     } catch {
-      // Sin billing o error de red - los datos ya están en IndexedDB
+      // Sin billing: los datos ya quedaron guardados en localStorage
     }
   }, [firebaseUser, settings, transactions, budgets, tabs, widgets]);
 
