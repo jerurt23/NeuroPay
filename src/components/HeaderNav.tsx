@@ -1,11 +1,7 @@
 import React from 'react';
-import { Sun, Moon, Bell } from 'lucide-react';
-import { ThemeMode } from '../types/index.ts';
+import { Bell } from 'lucide-react';
 
 interface HeaderNavProps {
-  theme: ThemeMode;
-  isDark: boolean;
-  onThemeChange: (theme: ThemeMode) => void;
   unreadCount: number;
   onOpenNotifications: () => void;
   onOpenProfile: () => void;
@@ -14,9 +10,6 @@ interface HeaderNavProps {
 }
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
-  theme,
-  isDark,
-  onThemeChange,
   unreadCount,
   onOpenNotifications,
   onOpenProfile,
@@ -36,16 +29,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onThemeChange(isDark ? 'light' : 'dark')}
-            className="p-2 rounded-full bg-zinc-100 hover-surface text-muted transition-colors"
-            aria-label="Cambiar tema"
-            title={theme === 'auto' ? 'Tema automatico' : isDark ? 'Oscuro' : 'Claro'}
-          >
-            {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-          </button>
-
           <button
             type="button"
             onClick={onOpenNotifications}

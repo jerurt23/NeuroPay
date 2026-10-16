@@ -58,27 +58,6 @@ export default function App() {
   const isRemoteSync = useRef(false);
   const isLoaded = useRef(false);
 
-  // Tema efectivo: resuelve 'auto' segun la preferencia del sistema
-  const isDark = useMemo(() => {
-    if (settings.theme === 'dark') return true;
-    if (settings.theme === 'light') return false;
-    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  }, [settings.theme]);
-
-  // Aplicar tema al documento
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
-
-  // Escuchar cambios del sistema cuando el tema es 'auto'
-  useEffect(() => {
-    if (settings.theme !== 'auto') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => setSettings((s) => ({ ...s }));
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [settings.theme]);
-
   // Filtro de temperatura de color (similar a True Tone)
   const tempFilter = useMemo(() => {
     if (settings.trueTone) {
@@ -224,19 +203,13 @@ export default function App() {
   }
 
   return (
-    <div
-      className="true-tone-layer min-h-screen flex flex-col surface-page text-main"
-      style={{ backgroundColor: isDark ? '#0a0a0b' : '#f8f9fa' }}
-    >
+    <div className="true-tone-layer min-h-screen flex flex-col surface-page text-main">
       <HeaderNav
-        theme={settings.theme}
-        isDark={isDark}
-        onThemeChange={(theme) => setSettings((s) => ({ ...s, theme }))}
+        userName={settings.userName || firebaseUser.displayName || ''}
+        userPhoto={settings.userPhoto}
         unreadCount={0}
         onOpenNotifications={() => {}}
         onOpenProfile={() => setIsProfileOpen(true)}
-        userName={settings.userName || firebaseUser.displayName || ''}
-        userPhoto={settings.userPhoto}
       />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24">
@@ -248,6 +221,7 @@ export default function App() {
             bankEmails={[]}
             currencySymbol={settings.currencySymbol}
             chartType={settings.chartType}
+            onChartTypeChange={(t) => setSettings((s) => ({ ...s, chartType: t }))}
             onOpenNewTransaction={() => setIsNewTxModalOpen(true)}
           />
         )}

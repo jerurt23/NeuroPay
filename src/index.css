@@ -42,62 +42,11 @@
     -webkit-tap-highlight-color: transparent;
     background-color: var(--app-bg);
     color: var(--app-fg);
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* ---------- Modo oscuro (controlado por App.tsx) ---------- */
-  html.dark body {
-    background-color: #0a0a0b;
-    color: #f4f4f5;
-  }
-
-  /* Superficies (tarjetas y listas) en modo oscuro */
-  html.dark .surface-card {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
-  }
-
-  html.dark .surface-page {
-    background-color: #0a0a0b !important;
-  }
-
-  /* Texto principal y secundario */
-  html.dark .text-main {
-    color: #f4f4f5 !important;
-  }
-
-  html.dark .text-muted {
-    color: #a1a1aa !important;
-  }
-
-  /* Campos de formulario */
-  html.dark .surface-input {
-    background-color: #27272a !important;
-    border-color: #3f3f46 !important;
-    color: #f4f4f5 !important;
-  }
-
-  /* Cristales (header, modales) */
-  html.dark .ios-glass,
-  html.dark .ios-glass-card {
-    background: rgba(24, 24, 27, 0.82);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  html.dark .ios-glass-card {
-    background: rgba(24, 24, 27, 0.92);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6), 0 2px 6px -1px rgba(0, 0, 0, 0.4);
-  }
-
-  /* Bordes y separadores */
-  html.dark .border-line,
-  html.dark .divide-line {
-    border-color: #27272a !important;
-  }
-
-  /* Zonas hover */
-  html.dark .hover-surface:hover {
-    background-color: #27272a !important;
+  /* Zona hover (usada por los botones segun el estado) */
+  .hover-surface:hover {
+    background-color: #e4e4e7;
   }
 }
 
