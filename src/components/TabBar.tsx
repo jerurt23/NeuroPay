@@ -37,7 +37,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       aria-label="Navegación principal"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md"
     >
-      <div className="ios-glass-card relative flex items-center justify-around px-2 py-1.5 rounded-[28px]">
+      <div className="ios-glass-card relative flex items-center justify-around px-1.5 sm:px-2 py-1.5 rounded-[28px]">
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const icon = ICON_MAP[tab.icon] || <LayoutGrid className="w-5 h-5" />;
@@ -47,7 +47,7 @@ export const TabBar: React.FC<TabBarProps> = ({
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className="relative flex flex-col items-center justify-center py-1.5 px-3 rounded-2xl transition-all duration-300"
+              className="relative flex flex-1 min-w-0 flex-col items-center justify-center py-1.5 px-1 sm:px-3 rounded-2xl transition-all duration-300"
             >
               {/* Liquid Glass Background */}
               <div
@@ -88,15 +88,16 @@ export const TabBar: React.FC<TabBarProps> = ({
           );
         })}
 
-        {/* Quick Add Button */}
+        {/* Quick Add Button - usa el mismo flujo de Registro que el resto */}
         <button
           type="button"
           onClick={onOpenNewTransaction}
           title="Nuevo Registro"
-          className="relative flex flex-col items-center justify-center p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/25 hover:scale-105 active:scale-95 transition-transform duration-200"
+          aria-label="Nuevo Registro"
+          className="relative flex flex-1 min-w-0 flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-lg shadow-blue-500/25 hover:scale-105 active:scale-95 transition-transform duration-200"
         >
-          <Plus className="w-5 h-5" />
-          <span className="text-[9px] font-bold mt-0.5">Nuevo</span>
+          <Plus className="w-5 h-5 flex-shrink-0" />
+          <span className="text-[9px] font-bold mt-0.5 truncate">Nuevo</span>
         </button>
       </div>
     </nav>

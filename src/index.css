@@ -42,6 +42,16 @@
     -webkit-tap-highlight-color: transparent;
     background-color: var(--app-bg);
     color: var(--app-fg);
+    /* Red de seguridad: ningun elemento puede generar scroll horizontal
+       en pantallas pequenas. */
+    overflow-x: hidden;
+  }
+
+  /* Los contenedores flex deben poder encogerse por debajo del tamano
+     de su contenido; sin esto, un boton ancho desborda la pantalla. */
+  img,
+  svg {
+    flex-shrink: 0;
   }
 
   /* Zona hover (usada por los botones segun el estado) */

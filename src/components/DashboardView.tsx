@@ -123,11 +123,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Chart */}
       <div className="p-5 rounded-2xl surface-card border-line">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-main">Ingresos vs Egresos</h3>
+          <div className="flex items-center gap-2 min-w-0">
+            <TrendingUp className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <h3 className="font-bold text-main truncate">Ingresos vs Egresos</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             {/* Selector de tipo de grafico */}
             <div className="relative">
               <button
@@ -172,13 +172,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {/* Periodo */}
-            <div className="flex gap-1 bg-zinc-100 rounded-lg p-0.5">
+            <div className="flex gap-1 bg-zinc-100 rounded-lg p-0.5 flex-1 sm:flex-none justify-between sm:justify-start">
               {(['day', 'week', 'month', 'year'] as PeriodFilter[]).map((period) => (
                 <button
                   key={period}
                   type="button"
                   onClick={() => setPeriodFilter(period)}
-                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`flex-1 sm:flex-none px-2 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                     periodFilter === period
                       ? 'surface-card text-blue-600 shadow-sm'
                       : 'text-muted hover-surface'

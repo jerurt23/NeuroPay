@@ -123,7 +123,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  return (
  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
  <div
- className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto surface-card rounded-t-[32px] sm:rounded-[32px] border border-line shadow-2xl p-5 sm:p-6 animate-in fade-in slide-in-from-bottom duration-300"
+ className="w-full max-w-full sm:max-w-lg max-h-[92vh] overflow-y-auto surface-card rounded-t-[32px] sm:rounded-[32px] border border-line shadow-2xl p-5 sm:p-6 animate-in fade-in slide-in-from-bottom duration-300"
  >
  {/* iOS Drag Handle on Mobile */}
  <div className="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-4 sm:hidden" />
@@ -203,14 +203,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  <label className="block text-xs font-semibold text-muted mb-2">
  Categoría
  </label>
- <div className="grid grid-cols-4 gap-2">
+ <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
  {categories.map((cat) => {
  const isSelected = category === cat.id;
  return (
  <button
  key={cat.id}
  type="button"
- onClick={() => setCategory(cat.id as StandardCategory)}
+ onClick={() => setCategory(cat.id)}
  className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all ${
  isSelected
  ? 'border-blue-500 bg-blue-500/10 text-blue-600 font-semibold shadow-sm'

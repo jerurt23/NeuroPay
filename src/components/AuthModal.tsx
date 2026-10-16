@@ -67,7 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  return (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl">
  <div
- className="w-full max-w-md surface-card border border-white/20 rounded-[32px] p-6 sm:p-7 shadow-2xl backdrop-blur-2xl relative animate-in fade-in zoom-in-95 duration-200"
+ className="w-full max-w-full sm:max-w-md surface-card border border-white/20 rounded-[32px] p-6 sm:p-7 shadow-2xl backdrop-blur-2xl relative animate-in fade-in zoom-in-95 duration-200"
  >
  <button
  type="button"
