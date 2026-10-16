@@ -278,7 +278,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       <div className="space-y-4 max-w-lg mx-auto">
         <h2 className="text-xl font-bold text-zinc-900">Nuevo Registro</h2>
         <p className="text-sm text-zinc-500">Selecciona una categoría</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="flex flex-col gap-3">
           {[
             { id: 'comida' as MainCategory, label: 'Comida', emoji: '🍎' },
             { id: 'transporte' as MainCategory, label: 'Transporte', emoji: '🚗' },
@@ -360,7 +360,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             <>
               <div>
                 <label className="text-xs font-medium text-zinc-600 mb-2 block">Alimento</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2">
                   {(DEFAULT_FOOD_ITEMS[foodSubcategory] || []).map((item) => (
                     <button
                       key={item}
@@ -870,3 +870,4 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     </div>
   );
 };
+
