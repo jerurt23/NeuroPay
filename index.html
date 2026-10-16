@@ -10,8 +10,14 @@
     <meta property="og:type" content="website" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#0a84ff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Android: la barra de estado toma este color. Debe coincidir con el
+         header para que la app parezca continua hasta el reloj. -->
+    <meta name="theme-color" content="#ffffff" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
