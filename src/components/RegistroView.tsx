@@ -190,7 +190,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       setTimeout(() => {
         setAnimationStep('save');
         setTimeout(() => {
-          handleSaveAll();
+          saveItems(pending);
         }, 100);
       }, 1800);
       setTimeout(() => {
@@ -307,11 +307,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     setPendingItems((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handleSaveAll = () => {
-    if (pendingItems.length === 0 || saveState !== 'idle') return;
+  const saveItems = (items: PendingItem[]) => {
+    if (items.length === 0 || saveState !== 'idle') return;
     setSaveState('saving');
 
-    pendingItems.forEach((item, index) => {
+    items.forEach((item, index) => {
       setTimeout(() => {
         const transportDetails = item.category === 'transporte' && item.transportOrigin ? {
           origin: item.transportOrigin,
@@ -355,8 +355,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         setSaveState('idle');
         setPendingItems([]);
       }, 1800);
-    }, pendingItems.length * 120 + 300);
+    }, items.length * 120 + 300);
   };
+
+  const handleSaveAll = () => saveItems(pendingItems);
 
   const canAdd = amount && parseFloat(amount) > 0 && (
     (mainCategory === 'comida' && (selectedItem || customItem || newItemName || customTitle)) ||
