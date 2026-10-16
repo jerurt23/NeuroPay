@@ -1,7 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownLeft, TrendingUp, BarChart3, LineChart, PieChart, Layers } from 'lucide-react';
 import { Transaction, CategoryInfo, Budget, BankEmail, ChartType } from '../types/index.ts';
 import { calculateTotals } from '../utils/budgetCalculations.ts';
+import {
+  getCategoryBreakdown,
+  getDashboardMeasures,
+  sumMeasures,
+  MeasureTotal,
+} from '../utils/dashboardMeasures.ts';
 
 interface DashboardViewProps {
   transactions: Transaction[];
@@ -18,8 +24,105 @@ interface DashboardViewProps {
 
 type PeriodFilter = 'day' | 'week' | 'month' | 'year';
 
+/** Un periodo del grafico: un dia, una semana, un mes o un año. */
+interface Bucket {
+  label: string;
+  match: (t: Transaction) => boolean;
+}
+
+interface BucketData {
+  label: string;
+  income: number;
+  expense: number;
+  measures: Record<string, MeasureTotal>;
+}
+
+interface Segment {
+  key: string;
+  label: string;
+  color: string;
+  value: number;
+}
+
 const INCOME_COLOR = '#34d399';
 const EXPENSE_COLOR = '#fb7185';
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+const RANGE_LABEL: Record<PeriodFilter, string> = {
+  day: 'últimos 7 días',
+  week: 'últimas 4 semanas',
+  month: 'últimos 6 meses',
+  year: 'últimos 4 años',
+};
+
+function buildBuckets(period: PeriodFilter, now: Date): Bucket[] {
+  const out: Bucket[] = [];
+
+  if (period === 'day') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      out.push({
+        label: d.toLocaleDateString('es', { weekday: 'short' }),
+        match: (t) => t.date === dateStr,
+      });
+    }
+  } else if (period === 'week') {
+    for (let i = 3; i >= 0; i--) {
+      const start = new Date(now);
+      start.setDate(start.getDate() - i * 7);
+      const end = new Date(start.getTime() + WEEK_MS);
+      out.push({
+        label: `Sem ${4 - i}`,
+        match: (t) => {
+          const d = new Date(t.date);
+          return d >= start && d < end;
+        },
+      });
+    }
+  } else if (period === 'month') {
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStr = d.toISOString().slice(0, 7);
+      out.push({
+        label: d.toLocaleDateString('es', { month: 'short' }),
+        match: (t) => t.date.startsWith(monthStr),
+      });
+    }
+  } else {
+    for (let i = 3; i >= 0; i--) {
+      const year = String(now.getFullYear() - i);
+      out.push({ label: year, match: (t) => t.date.startsWith(year) });
+    }
+  }
+
+  return out;
+}
+
+const sumAmount = (list: Transaction[]) => list.reduce((s, t) => s + t.amount, 0);
+
+/**
+ * Reparte un total en ingresos, las medidas (que son parte de los egresos)
+ * y el resto de egresos. Asi el apilado y el circular suman bien.
+ */
+function segmentsOf(
+  income: number,
+  expense: number,
+  parts: { key: string; label: string; color: string; amount: number }[]
+): Segment[] {
+  const measured = parts.reduce((s, p) => s + p.amount, 0);
+  return [
+    { key: 'income', label: 'Ingresos', color: INCOME_COLOR, value: income },
+    ...parts.map((p) => ({ key: p.key, label: p.label, color: p.color, value: p.amount })),
+    {
+      key: 'other',
+      label: parts.length > 0 ? 'Otros egresos' : 'Egresos',
+      color: EXPENSE_COLOR,
+      value: Math.max(expense - measured, 0),
+    },
+  ];
+}
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   transactions,
@@ -39,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const localChartType = chartType;
 
   // Cerrar el menu con Escape y bloquear el scroll de fondo
-  React.useEffect(() => {
+  useEffect(() => {
     if (!showTypePicker) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowTypePicker(false);
@@ -55,122 +158,102 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totals = calculateTotals(transactions);
 
-  const chartData = useMemo(() => {
-    const now = new Date();
-    const data: { label: string; income: number; expense: number }[] = [];
+  // Categorias personalizadas que el usuario eligio mostrar. Cada una es un valor medible.
+  const measures = useMemo(
+    () => getDashboardMeasures(customCategories, dashboardGroups),
+    [customCategories, dashboardGroups]
+  );
 
-    if (periodFilter === 'day') {
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        const dayTxs = transactions.filter(t => t.date === dateStr);
-        data.push({
-          label: d.toLocaleDateString('es', { weekday: 'short' }),
-          income: dayTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-          expense: dayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        });
-      }
-    } else if (periodFilter === 'week') {
-      for (let i = 3; i >= 0; i--) {
-        const weekStart = new Date(now);
-        weekStart.setDate(weekStart.getDate() - (i * 7));
-        const weekTxs = transactions.filter(t => {
-          const txDate = new Date(t.date);
-          return txDate >= weekStart && txDate < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-        });
-        data.push({
-          label: `Sem ${4 - i}`,
-          income: weekTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-          expense: weekTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        });
-      }
-    } else if (periodFilter === 'month') {
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const monthStr = d.toISOString().slice(0, 7);
-        const monthTxs = transactions.filter(t => t.date.startsWith(monthStr));
-        data.push({
-          label: d.toLocaleDateString('es', { month: 'short' }),
-          income: monthTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-          expense: monthTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        });
-      }
-    } else {
-      for (let i = 3; i >= 0; i--) {
-        const year = now.getFullYear() - i;
-        const yearTxs = transactions.filter(t => t.date.startsWith(String(year)));
-        data.push({
-          label: String(year),
-          income: yearTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-          expense: yearTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-        });
-      }
-    }
+  // Datos de cada periodo del grafico
+  const chartData = useMemo<BucketData[]>(
+    () =>
+      buildBuckets(periodFilter, new Date()).map((b) => {
+        const txs = transactions.filter(b.match);
+        return {
+          label: b.label,
+          income: sumAmount(txs.filter((t) => t.type === 'income')),
+          expense: sumAmount(txs.filter((t) => t.type === 'expense')),
+          measures: sumMeasures(txs, measures),
+        };
+      }),
+    [transactions, periodFilter, measures]
+  );
 
-    return data;
-  }, [transactions, periodFilter]);
+  // Series para lineas y barras: ingresos, egresos y cada valor medible
+  const series = useMemo(
+    () => [
+      { key: 'income', label: 'Ingresos', color: INCOME_COLOR, value: (d: BucketData) => d.income },
+      { key: 'expense', label: 'Egresos', color: EXPENSE_COLOR, value: (d: BucketData) => d.expense },
+      ...measures.map((m) => ({
+        key: m.id,
+        label: m.name,
+        color: m.color,
+        value: (d: BucketData) => d.measures[m.id]?.amount ?? 0,
+      })),
+    ],
+    [measures]
+  );
 
-  const maxChartValue = Math.max(...chartData.flatMap(d => [d.income, d.expense]), 1);
+  const maxChartValue = Math.max(1, ...chartData.flatMap((d) => series.map((s) => s.value(d))));
 
-  /**
-   * Gastos agrupados por categoria, respetando lo que el usuario eligio al
-   * crear la categoria:
-   *   'NONE'            -> no aparece en el dashboard
-   *   'NEW:<nombre>'    -> grupo propio con su nombre
-   *   '<id de categoria>' -> se une a esa categoria del dashboard
-   * Las categorias base siempre aparecen con sus transacciones.
-   */
-  const categoryBreakdown = useMemo(() => {
-    // categoria de la transaccion -> categoria del dashboard
-    const target = new Map<string, string>();
-    const nameOf = new Map<string, string>();
-    const colorOf = new Map<string, string>();
+  // Totales del periodo visible
+  const periodTotals = useMemo(() => {
+    const income = chartData.reduce((s, d) => s + d.income, 0);
+    const expense = chartData.reduce((s, d) => s + d.expense, 0);
+    const measureTotals = measures.map((m) => ({
+      measure: m,
+      amount: chartData.reduce((s, d) => s + (d.measures[m.id]?.amount ?? 0), 0),
+      count: chartData.reduce((s, d) => s + (d.measures[m.id]?.count ?? 0), 0),
+    }));
+    return { income, expense, measureTotals };
+  }, [chartData, measures]);
 
-    categories.forEach((c) => {
-      target.set(c.id, c.id);
-      nameOf.set(c.id, c.name);
-      colorOf.set(c.id, c.color);
-    });
+  const rangeSegments = segmentsOf(
+    periodTotals.income,
+    periodTotals.expense,
+    periodTotals.measureTotals.map((x) => ({
+      key: x.measure.id,
+      label: x.measure.name,
+      color: x.measure.color,
+      amount: x.amount,
+    }))
+  );
 
-    (customCategories || []).forEach((c) => {
-      const group = dashboardGroups?.[c.name];
-      if (!group || group === 'NONE') return; // el usuario decidio no mostrarla
-      if (group.startsWith('NEW:')) {
-        // Grupo propio: conserva el nombre que le dio el usuario.
-        target.set(c.id, c.id);
-        nameOf.set(c.id, c.name);
-      } else {
-        // Se une a una categoria base, que conserva su nombre.
-        target.set(c.id, group);
-      }
-    });
+  const bucketSegments = (d: BucketData) =>
+    segmentsOf(
+      d.income,
+      d.expense,
+      measures.map((m) => ({
+        key: m.id,
+        label: m.name,
+        color: m.color,
+        amount: d.measures[m.id]?.amount ?? 0,
+      }))
+    );
 
-    const PALETTE = ['#8E8E93', '#0A84FF', '#30D158', '#FF9500', '#BF5AF2', '#FF2D55', '#64D2FF', '#5E5CE6'];
-    let nextColor = 0;
+  // Circular: el arco de cada segmento empieza donde termina el anterior
+  const C = 2 * Math.PI * 60;
+  const pieTotal = rangeSegments.reduce((s, x) => s + x.value, 0);
+  const arcs: { seg: Segment; len: number; offset: number }[] = [];
+  let acc = 0;
+  rangeSegments.forEach((seg) => {
+    if (seg.value <= 0) return;
+    arcs.push({ seg, len: (seg.value / pieTotal) * C, offset: -(acc / pieTotal) * C });
+    acc += seg.value;
+  });
 
-    const totals = new Map<string, { id: string; name: string; amount: number; count: number }>();
+  // Lineas: coordenadas del SVG
+  const svgWidth = Math.max(chartData.length * 60, 300);
+  const x = (i: number) => i * 60 + 30;
+  const y = (v: number) => 140 - (v / maxChartValue) * 130;
 
-    transactions
-      .filter((t) => t.type === 'expense')
-      .forEach((t) => {
-        const groupId = target.get(t.category);
-        if (!groupId) return; // categoria oculta por decision del usuario
+  const legend: { key: string; label: string; color: string }[] =
+    localChartType === 'stacked' ? rangeSegments : series;
 
-        const name = nameOf.get(groupId) || groupId;
-
-        if (!colorOf.has(groupId)) colorOf.set(groupId, PALETTE[nextColor++ % PALETTE.length]);
-
-        const cur = totals.get(groupId) || { id: groupId, name, amount: 0, count: 0 };
-        cur.amount += t.amount;
-        cur.count += 1;
-        totals.set(groupId, cur);
-      });
-
-    return Array.from(totals.values())
-      .map((g) => ({ ...g, color: colorOf.get(g.id) || '#8E8E93' }))
-      .sort((a, b) => b.amount - a.amount);
-  }, [transactions, categories, customCategories, dashboardGroups]);
+  const breakdown = useMemo(
+    () => getCategoryBreakdown(transactions, categories, customCategories, dashboardGroups),
+    [transactions, categories, customCategories, dashboardGroups]
+  );
 
   return (
     <div className="space-y-6">
@@ -247,83 +330,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* ---------- GRAFICO: LINEAS ---------- */}
         {localChartType === 'line' && (
-          <div className="relative">
-            <svg viewBox={`0 0 ${Math.max(chartData.length * 60, 300)} 140`} className="w-full h-44" preserveAspectRatio="none">
-              {/* Lineas de guia */}
-              {[0, 0.25, 0.5, 0.75, 1].map((p) => (
-                <line
-                  key={p}
-                  x1="0"
-                  x2={Math.max(chartData.length * 60, 300)}
-                  y1={140 - p * 130}
-                  y2={140 - p * 130}
-                  stroke="#e4e4e7"
-                  strokeWidth="0.5"
+          <svg viewBox={`0 0 ${svgWidth} 140`} className="w-full h-44" preserveAspectRatio="none">
+            {[0, 0.25, 0.5, 0.75, 1].map((p) => (
+              <line
+                key={p}
+                x1="0"
+                x2={svgWidth}
+                y1={140 - p * 130}
+                y2={140 - p * 130}
+                stroke="#e4e4e7"
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+            {/* Area bajo la linea de ingresos */}
+            <polygon
+              fill={INCOME_COLOR}
+              fillOpacity="0.12"
+              points={`${x(0)},140 ${chartData.map((d, i) => `${x(i)},${y(d.income)}`).join(' ')} ${x(chartData.length - 1)},140`}
+            />
+            {series.map((s) => (
+              <polyline
+                key={s.key}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="2"
+                vectorEffect="non-scaling-stroke"
+                points={chartData.map((d, i) => `${x(i)},${y(s.value(d))}`).join(' ')}
+              />
+            ))}
+            {series.map((s) =>
+              chartData.map((d, i) => (
+                <circle
+                  key={`${s.key}-${i}`}
+                  cx={x(i)}
+                  cy={y(s.value(d))}
+                  r="3"
+                  fill="#fff"
+                  stroke={s.color}
+                  strokeWidth="2"
                   vectorEffect="non-scaling-stroke"
                 />
-              ))}
-              {/* Area bajo la linea de ingresos */}
-              <polygon
-                fill={INCOME_COLOR}
-                fillOpacity="0.12"
-                points={`0,140 ${chartData.map((d, i) => `${i * 60 + 30},${140 - (d.income / maxChartValue) * 130}`).join(' ')} ${(chartData.length - 1) * 60 + 30},140`}
-              />
-              {/* Lineas */}
-              <polyline
-                fill="none"
-                stroke={INCOME_COLOR}
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-                points={chartData.map((d, i) => `${i * 60 + 30},${140 - (d.income / maxChartValue) * 130}`).join(' ')}
-              />
-              <polyline
-                fill="none"
-                stroke={EXPENSE_COLOR}
-                strokeWidth="2"
-                vectorEffect="non-scaling-stroke"
-                points={chartData.map((d, i) => `${i * 60 + 30},${140 - (d.expense / maxChartValue) * 130}`).join(' ')}
-              />
-              {/* Puntos y etiquetas */}
-              {chartData.map((d, i) => (
-                <g key={i}>
-                  <circle cx={i * 60 + 30} cy={140 - (d.income / maxChartValue) * 130} r="3.5" fill="#fff" stroke={INCOME_COLOR} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                  <circle cx={i * 60 + 30} cy={140 - (d.expense / maxChartValue) * 130} r="3.5" fill="#fff" stroke={EXPENSE_COLOR} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                  <text x={i * 60 + 30} y={139} textAnchor="middle" className="text-[8px] fill-zinc-400">
-                    {d.label}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </div>
+              ))
+            )}
+            {chartData.map((d, i) => (
+              <text key={i} x={x(i)} y={139} textAnchor="middle" className="text-[8px] fill-zinc-400">
+                {d.label}
+              </text>
+            ))}
+          </svg>
         )}
 
-        {/* ---------- GRAFICO: BARRAS (agrupadas) ---------- */}
+        {/* ---------- GRAFICO: BARRAS ---------- */}
         {localChartType === 'bar' && (
           <div className="flex items-stretch justify-between gap-1 sm:gap-2 h-44 pt-2">
             {chartData.map((d, i) => {
-              const hInc = (d.income / maxChartValue) * 100;
-              const hExp = (d.expense / maxChartValue) * 100;
-              const hasData = d.income > 0 || d.expense > 0;
+              const hasData = series.some((s) => s.value(d) > 0);
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                   {/* flex-1 + min-h-0: el area de barras ocupa todo el alto disponible */}
-                  <div className="flex-1 min-h-0 w-full flex items-end justify-center gap-0.5">
-                    <div
-                      className="w-1/2 max-w-5 rounded-t-md transition-all duration-500"
-                      style={{ height: `${Math.max(hInc, 1)}%`, backgroundColor: INCOME_COLOR }}
-                      title={`Ingresos: ${currencySymbol}${d.income.toFixed(2)}`}
-                    />
-                    <div
-                      className="w-1/2 max-w-5 rounded-t-md transition-all duration-500"
-                      style={{ height: `${Math.max(hExp, 1)}%`, backgroundColor: EXPENSE_COLOR }}
-                      title={`Egresos: ${currencySymbol}${d.expense.toFixed(2)}`}
-                    />
+                  <div className="flex-1 min-h-0 w-full flex items-end justify-center gap-px">
+                    {series.map((s) => {
+                      const v = s.value(d);
+                      return (
+                        <div
+                          key={s.key}
+                          className="flex-1 max-w-4 rounded-t-sm transition-all duration-500"
+                          style={{
+                            height: `${v > 0 ? Math.max((v / maxChartValue) * 100, 1) : 0}%`,
+                            backgroundColor: s.color,
+                          }}
+                          title={`${s.label}: ${currencySymbol}${v.toFixed(2)}`}
+                        />
+                      );
+                    })}
                   </div>
-                  <span
-                    className={`text-[10px] truncate w-full text-center ${
-                      hasData ? 'text-muted' : 'text-zinc-300'
-                    }`}
-                  >
+                  <span className={`text-[10px] truncate w-full text-center ${hasData ? 'text-muted' : 'text-zinc-300'}`}>
                     {d.label}
                   </span>
                 </div>
@@ -335,31 +417,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* ---------- GRAFICO: APILADAS ---------- */}
         {localChartType === 'stacked' && (
           <div className="space-y-3 pt-1">
-            {chartData.map((item, idx) => {
-              const total = item.income + item.expense;
-              const pctInc = total > 0 ? (item.income / total) * 100 : 0;
-              const pctExp = total > 0 ? (item.expense / total) * 100 : 0;
+            {chartData.map((d, idx) => {
+              const segs = bucketSegments(d);
+              const total = segs.reduce((s, x) => s + x.value, 0);
               return (
                 <div key={idx} className="flex items-center gap-3">
-                  <span className="text-xs text-muted w-12 flex-shrink-0">{item.label}</span>
+                  <span className="text-xs text-muted w-12 flex-shrink-0">{d.label}</span>
                   <div className="flex-1 h-6 rounded-md overflow-hidden bg-zinc-100 flex">
                     {total > 0 ? (
-                      <>
-                        <div
-                          className="h-full flex items-center justify-end pr-1 text-[9px] font-bold text-white transition-all duration-300"
-                          style={{ width: `${pctInc}%`, backgroundColor: INCOME_COLOR }}
-                          title={`Ingresos: ${currencySymbol}${item.income.toFixed(2)}`}
-                        >
-                          {pctInc > 15 ? `${pctInc.toFixed(0)}%` : ''}
-                        </div>
-                        <div
-                          className="h-full flex items-center pl-1 text-[9px] font-bold text-white transition-all duration-300"
-                          style={{ width: `${pctExp}%`, backgroundColor: EXPENSE_COLOR }}
-                          title={`Egresos: ${currencySymbol}${item.expense.toFixed(2)}`}
-                        >
-                          {pctExp > 15 ? `${pctExp.toFixed(0)}%` : ''}
-                        </div>
-                      </>
+                      segs
+                        .filter((s) => s.value > 0)
+                        .map((s) => {
+                          const pct = (s.value / total) * 100;
+                          return (
+                            <div
+                              key={s.key}
+                              className="h-full flex items-center justify-center overflow-hidden text-[9px] font-bold text-white transition-all duration-300"
+                              style={{ width: `${pct}%`, backgroundColor: s.color }}
+                              title={`${s.label}: ${currencySymbol}${s.value.toFixed(2)}`}
+                            >
+                              {pct > 15 ? `${pct.toFixed(0)}%` : ''}
+                            </div>
+                          );
+                        })
                     ) : (
                       <div className="w-full text-[9px] text-zinc-400 flex items-center justify-center">Sin datos</div>
                     )}
@@ -374,84 +454,104 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
 
         {/* ---------- GRAFICO: CIRCULAR ---------- */}
-        {localChartType === 'pie' && (() => {
-          const totalIncome = chartData.reduce((s, d) => s + d.income, 0);
-          const totalExpense = chartData.reduce((s, d) => s + d.expense, 0);
-          const total = totalIncome + totalExpense;
-
-          if (total <= 0) {
-            return (
-              <div className="h-44 flex items-center justify-center text-sm text-muted">
-                Sin datos para el periodo seleccionado
-              </div>
-            );
-          }
-
-          const pctInc = (totalIncome / total) * 100;
-          // Circunferencia del circulo (r=60)
-          const C = 2 * Math.PI * 60;
-
-          return (
+        {localChartType === 'pie' &&
+          (pieTotal <= 0 ? (
+            <div className="h-44 flex items-center justify-center text-sm text-muted">
+              Sin datos para el periodo seleccionado
+            </div>
+          ) : (
             <div className="flex flex-col sm:flex-row items-center gap-6 pt-2">
               <div className="relative w-40 h-40 flex-shrink-0">
                 <svg viewBox="0 0 160 160" className="w-full h-full -rotate-90">
-                  <circle cx="80" cy="80" r="60" fill="none" stroke={INCOME_COLOR} strokeWidth="28"
-                    strokeDasharray={`${(C * pctInc) / 100} ${C}`} />
-                  <circle cx="80" cy="80" r="60" fill="none" stroke={EXPENSE_COLOR} strokeWidth="28"
-                    strokeDasharray={`${(C * (100 - pctInc)) / 100} ${C}`}
-                    strokeDashoffset={`${-(C * pctInc) / 100}`} />
+                  {arcs.map(({ seg, len, offset }) => (
+                    <circle
+                      key={seg.key}
+                      cx="80"
+                      cy="80"
+                      r="60"
+                      fill="none"
+                      stroke={seg.color}
+                      strokeWidth="28"
+                      strokeDasharray={`${len} ${C}`}
+                      strokeDashoffset={offset}
+                    />
+                  ))}
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-[10px] text-muted">Total</span>
-                  <span className="text-sm font-bold text-main">
-                    {currencySymbol}{total.toFixed(0)}
-                  </span>
+                  <span className="text-sm font-bold text-main">{currencySymbol}{pieTotal.toFixed(0)}</span>
                 </div>
               </div>
               <div className="flex-1 w-full space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: INCOME_COLOR }} />
-                    <span className="text-xs text-muted">Ingresos</span>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-bold text-main">{currencySymbol}{totalIncome.toFixed(2)}</span>
-                    <span className="text-[10px] text-muted ml-1">{pctInc.toFixed(1)}%</span>
-                  </div>
-                </div>
-                <div className="h-px bg-zinc-100" />
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: EXPENSE_COLOR }} />
-                    <span className="text-xs text-muted">Egresos</span>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-bold text-main">{currencySymbol}{totalExpense.toFixed(2)}</span>
-                    <span className="text-[10px] text-muted ml-1">{(100 - pctInc).toFixed(1)}%</span>
-                  </div>
-                </div>
+                {rangeSegments
+                  .filter((s) => s.value > 0)
+                  .map((s) => (
+                    <div key={s.key} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
+                        <span className="text-xs text-muted truncate">{s.label}</span>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className="text-sm font-bold text-main">{currencySymbol}{s.value.toFixed(2)}</span>
+                        <span className="text-[10px] text-muted ml-1">{((s.value / pieTotal) * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
                 <div className="h-px bg-zinc-100" />
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-main">Balance</span>
-                  <span className={`text-sm font-bold ${totalIncome - totalExpense >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {currencySymbol}{(totalIncome - totalExpense).toFixed(2)}
+                  <span
+                    className={`text-sm font-bold ${
+                      periodTotals.income - periodTotals.expense >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  >
+                    {currencySymbol}{(periodTotals.income - periodTotals.expense).toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
-          );
-        })()}
+          ))}
 
-        {/* Leyenda (solo para barras, lineas y apiladas) */}
+        {/* Leyenda (no aplica al circular, que ya lista sus partes) */}
         {localChartType !== 'pie' && (
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t divide-line">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: INCOME_COLOR }} />
-              <span className="text-xs text-muted">Ingresos</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: EXPENSE_COLOR }} />
-              <span className="text-xs text-muted">Egresos</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-zinc-100">
+            {legend.map((s) => (
+              <div key={s.key} className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: s.color }} />
+                <span className="text-xs text-muted">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Valores medibles: las categorias que el usuario eligio mostrar */}
+        {periodTotals.measureTotals.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-zinc-100">
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">
+              Valores medibles · {RANGE_LABEL[periodFilter]}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {periodTotals.measureTotals.map(({ measure, amount, count }) => {
+                const share = periodTotals.expense > 0 ? (amount / periodTotals.expense) * 100 : 0;
+                return (
+                  <div
+                    key={measure.id}
+                    className="rounded-xl p-3 border border-line min-w-0"
+                    style={{ backgroundColor: `${measure.color}14` }}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: measure.color }} />
+                      <span className="text-xs font-medium text-main truncate">{measure.name}</span>
+                    </div>
+                    <p className="text-base font-bold text-main mt-1 truncate">
+                      {currencySymbol}{amount.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-muted truncate">
+                      {count} registro(s) · {share.toFixed(0)}% de egresos
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -471,7 +571,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         <div className="divide-y divide-zinc-100">
           {transactions.slice(0, 5).map((tx) => {
-            const cat = categories.find(c => c.id === tx.category);
+            const cat = categories.find((c) => c.id === tx.category);
             return (
               <div key={tx.id} className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
@@ -495,9 +595,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Gastos por categoria. Solo aparecen las que el usuario decidio
-          mostrar en el dashboard. */}
-      {categoryBreakdown.length > 0 && (
+      {/* Gastos por categoria: las base siempre; las personalizadas solo si se eligieron */}
+      {breakdown.length > 0 && (
         <div className={`p-5 rounded-2xl surface-card border-line ${showTypePicker ? 'focus-dimmed' : ''}`}>
           <div className="flex items-center gap-2 mb-4">
             <PieChart className="w-5 h-5 text-blue-600 flex-shrink-0" />
@@ -505,16 +604,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="space-y-3">
-            {categoryBreakdown.map((g) => {
+            {breakdown.map((g) => {
               const pct = totals.totalExpense > 0 ? (g.amount / totals.totalExpense) * 100 : 0;
               return (
                 <div key={g.id}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: g.color }}
-                      />
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                       <span className="text-sm text-main truncate">{g.name}</span>
                       <span className="text-[10px] text-muted flex-shrink-0">
                         {g.count} · {pct.toFixed(0)}%
@@ -547,10 +643,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           aria-label="Tipo de grafico"
         >
           {/* Fondo con blur: al pulsarlo se cierra */}
-          <div
-            className="absolute inset-0 bg-zinc-900/25 backdrop-blur-sm"
-            onClick={() => setShowTypePicker(false)}
-          />
+          <div className="absolute inset-0 bg-zinc-900/25 backdrop-blur-sm" onClick={() => setShowTypePicker(false)} />
 
           <div className="chart-menu-pop relative w-full max-w-[min(18rem,100%)] p-2 surface-card border-line rounded-2xl shadow-2xl">
             <p className="px-2 pt-1 pb-2 text-[11px] font-semibold text-muted uppercase tracking-wide">
@@ -568,12 +661,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <button
                     key={v}
                     type="button"
-                    onClick={() => { onChartTypeChange?.(v); setShowTypePicker(false); }}
+                    onClick={() => {
+                      onChartTypeChange?.(v);
+                      setShowTypePicker(false);
+                    }}
                     aria-pressed={active}
                     className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl text-xs font-medium transition-all ${
-                      active
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-zinc-100 text-main hover-surface active:scale-95'
+                      active ? 'bg-blue-600 text-white shadow-sm' : 'bg-zinc-100 text-main hover-surface active:scale-95'
                     }`}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
