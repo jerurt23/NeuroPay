@@ -130,6 +130,9 @@ export type ViewportMode = 'native' | 'iphone' | 'ipad' | 'macbook';
 /** Ajuste de temperatura de color, similar a True Tone de Apple. */
 export type ColorTemperature = 'off' | 'warm' | 'cool';
 
+/** Estilo de grafico del dashboard. */
+export type ChartType = 'bar' | 'line' | 'stacked' | 'pie';
+
 export interface UserSettings {
   userName: string;
   userEmail: string;
@@ -146,7 +149,7 @@ export interface UserSettings {
   accountPassword?: string;
   dashboardGroups?: Record<string, string>;
   customCategories?: CustomCategoryDef[];
-  chartType?: 'bar' | 'line';
+  chartType?: ChartType;
   countryCode?: string;
 }
 

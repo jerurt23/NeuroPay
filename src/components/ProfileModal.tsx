@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Coins, User, Moon, Sun, Trash2 } from 'lucide-react';
+import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Layers, PieChart, Coins, User, Trash2 } from 'lucide-react';
 import { UserSettings, Transaction, CategoryInfo } from '../types/index.ts';
 
 interface ProfileModalProps {
@@ -184,29 +184,26 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               {openSections.has('chart') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
             </button>
             {openSections.has('chart') && (
-              <div className="px-3 pb-3 flex gap-2 border-t border-zinc-100 pt-3">
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ chartType: 'bar' })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
-                    (settings.chartType || 'bar') === 'bar'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-100 text-muted'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" /> Barras
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ chartType: 'line' })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
-                    settings.chartType === 'line'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-100 text-muted'
-                  }`}
-                >
-                  <LineChart className="w-4 h-4" /> Líneas
-                </button>
+              <div className="px-3 pb-3 grid grid-cols-2 gap-2 border-t border-zinc-100 pt-3">
+                {([
+                  { v: 'bar' as const, label: 'Barras', Icon: BarChart3 },
+                  { v: 'line' as const, label: 'Líneas', Icon: LineChart },
+                  { v: 'stacked' as const, label: 'Apiladas', Icon: Layers },
+                  { v: 'pie' as const, label: 'Circular', Icon: PieChart },
+                ]).map(({ v, label, Icon }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onUpdateSettings({ chartType: v })}
+                    className={`py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
+                      (settings.chartType || 'bar') === v
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-zinc-100 text-muted hover-surface'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" /> {label}
+                  </button>
+                ))}
               </div>
             )}
           </div>
@@ -319,52 +316,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     Actualizar contraseña
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Temas */}
-          <div className="rounded-xl border border-line overflow-hidden mt-2">
-            <button
-              type="button"
-              onClick={() => toggleSection('theme')}
-              className="w-full flex items-center justify-between p-3 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Moon className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-medium text-main">Temas</span>
-              </div>
-              {openSections.has('theme') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
-            </button>
-            {openSections.has('theme') && (
-              <div className="px-3 pb-3 border-t border-zinc-100 pt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ theme: 'light' })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'light' ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-muted'
-                  }`}
-                >
-                  Claro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ theme: 'dark' })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'dark' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-muted'
-                  }`}
-                >
-                  Oscuro
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateSettings({ theme: 'auto' })}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'auto' ? 'bg-indigo-600 text-white' : 'bg-zinc-100 text-muted'
-                  }`}
-                >
-                  Auto
-                </button>
               </div>
             )}
           </div>

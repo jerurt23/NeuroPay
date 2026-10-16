@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Sun,
-  Moon,
   LogOut,
   Layers,
   Grid,
@@ -10,7 +8,7 @@ import {
   Flame,
   Snowflake,
 } from 'lucide-react';
-import { UserSettings, ThemeMode, TabConfig, WidgetConfig, WidgetSize } from '../types/index.ts';
+import { UserSettings, TabConfig, WidgetConfig, WidgetSize } from '../types/index.ts';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -130,32 +128,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* Appearance */}
       <div className="p-5 rounded-2xl surface-card border-line space-y-4">
         <h3 className="font-bold text-main">Apariencia</h3>
-
-        {/* Tema */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted">Tema</span>
-          <div className="flex gap-1.5">
-            {([
-              { v: 'light' as ThemeMode, label: 'Claro', Icon: Sun },
-              { v: 'dark' as ThemeMode, label: 'Oscuro', Icon: Moon },
-              { v: 'auto' as ThemeMode, label: 'Auto', Icon: Layers },
-            ]).map(({ v, label, Icon }) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => onUpdateSettings({ theme: v })}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  settings.theme === v
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-zinc-100 text-muted hover-surface'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Temperatura de color */}
         <div>
