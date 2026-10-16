@@ -111,7 +111,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl"
+      className="fixed inset-0 z-50 safe-overlay flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl"
       onClick={onClose}
     >
       <div
