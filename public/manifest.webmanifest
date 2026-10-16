@@ -1,0 +1,49 @@
+{
+  "name": "NEUROPAY by Urteagaholding",
+  "short_name": "NEUROPAY",
+  "description": "Control de gastos y compras con estética iOS, red neuronal interactiva, seguimiento de rutas de transporte y sincronización de alertas bancarias.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f8f9fa",
+  "theme_color": "#ffffff",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuevo Registro",
+      "short_name": "Nuevo",
+      "description": "Registrar una nueva transacción",
+      "url": "/?action=new"
+    }
+  ]
+}
