@@ -436,7 +436,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   if (editingTx) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl">
-        <div className="w-full max-w-md bg-white/90 rounded-3xl p-6 border border-white/60 shadow-2xl space-y-4 backdrop-blur-xl">
+        <div className="w-full max-w-full sm:max-w-md bg-white/90 rounded-3xl p-6 border border-white/60 shadow-2xl space-y-4 backdrop-blur-xl">
           <h2 className="text-lg font-bold text-main">Editar Registro</h2>
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Titulo</label>

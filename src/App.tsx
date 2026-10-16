@@ -5,7 +5,6 @@ import { DashboardView } from './components/DashboardView.tsx';
 import { RegistroView } from './components/RegistroView.tsx';
 import { BudgetView } from './components/BudgetView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
-import { NewTransactionModal } from './components/NewTransactionModal.tsx';
 import { ProfileModal } from './components/ProfileModal.tsx';
 import { LoginScreen } from './components/LoginScreen.tsx';
 import {
@@ -52,7 +51,16 @@ export default function App() {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(INITIAL_WIDGETS);
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isNewTxModalOpen, setIsNewTxModalOpen] = useState(false);
+
+  /**
+   * Todos los botones "Nuevo" usan el mismo flujo: la pestaña Registro,
+   * que empieza pidiendo la categoria (Comida, Transporte, Medicina,
+   * Ingresos, tus categorias personalizadas...) y de ahi deriva el
+   * formulario con los campos especificos de cada tipo.
+   */
+  const goToNewTransaction = useCallback(() => {
+    setActiveTab('registro');
+  }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const isRemoteSync = useRef(false);
@@ -224,7 +232,7 @@ export default function App() {
             currencySymbol={settings.currencySymbol}
             chartType={settings.chartType}
             onChartTypeChange={(t) => setSettings((s) => ({ ...s, chartType: t }))}
-            onOpenNewTransaction={() => setIsNewTxModalOpen(true)}
+            onOpenNewTransaction={goToNewTransaction}
           />
         )}
 
@@ -272,15 +280,7 @@ export default function App() {
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={(tabId) => setActiveTab(tabId)}
-        onOpenNewTransaction={() => setIsNewTxModalOpen(true)}
-      />
-
-      <NewTransactionModal
-        isOpen={isNewTxModalOpen}
-        onClose={() => setIsNewTxModalOpen(false)}
-        onSave={handleSaveTransaction}
-        categories={allCategories}
-        currencySymbol={settings.currencySymbol}
+        onOpenNewTransaction={goToNewTransaction}
       />
 
       <ProfileModal

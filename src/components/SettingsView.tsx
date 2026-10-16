@@ -129,13 +129,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="p-5 rounded-2xl surface-card border-line space-y-4">
         <h3 className="font-bold text-main">Apariencia</h3>
 
-        {/* Temperatura de color */}
+        {/* True Tone */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-medium text-main">Temperatura de color</p>
-              <p className="text-xs text-muted">Reduce la fatiga visual</p>
-            </div>
+          <div className="mb-2">
+            <p className="text-sm font-medium text-main">True Tone</p>
+            <p className="text-xs text-muted">Ajusta la temperatura de color de la pantalla</p>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {([
@@ -146,12 +144,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 key={v}
                 type="button"
-                onClick={() =>
-                  onUpdateSettings({
-                    colorTemperature: v,
-                    trueTone: v !== 'off' ? settings.trueTone : false,
-                  })
-                }
+                onClick={() => onUpdateSettings({ colorTemperature: v, trueTone: false })}
                 className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${
                   (settings.colorTemperature ?? 'off') === v
                     ? 'bg-amber-500 text-white'
@@ -166,33 +159,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <p className="text-[11px] text-zinc-400 mt-2">
             Reduce el brillo azul de la pantalla, similar al True Tone de Apple.
           </p>
-        </div>
-
-        {/* True Tone automatico */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-main">True Tone suave</p>
-            <p className="text-xs text-muted">Calidez ambiental inteligente</p>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              onUpdateSettings({
-                trueTone: !settings.trueTone,
-                colorTemperature: !settings.trueTone ? 'warm' : 'off',
-              })
-            }
-            className={`w-12 h-7 rounded-full transition-colors relative ${
-              settings.trueTone ? 'bg-amber-500' : 'bg-zinc-300'
-            }`}
-            aria-label="Activar True Tone suave"
-          >
-            <span
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
-                settings.trueTone ? 'left-5' : 'left-0.5'
-              }`}
-            />
-          </button>
         </div>
         <div className="flex items-center justify-between">
           <div>
