@@ -390,6 +390,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             { id: 'transporte' as MainCategory, label: 'Transporte', emoji: '🚗' },
             { id: 'medicina' as MainCategory, label: 'Medicina', emoji: '💊' },
             { id: 'ingresos' as MainCategory, label: 'Ingresos', emoji: '📈' },
+            ...(customCategories || []).map((c: any) => ({
+              id: c.id as MainCategory,
+              label: c.name,
+              emoji: '🏷️',
+            })),
             { id: 'nueva' as MainCategory, label: 'Nueva', emoji: '✨' },
           ].map((cat) => (
             <button

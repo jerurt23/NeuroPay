@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { HeaderNav } from './components/HeaderNav.tsx';
 import { TabBar } from './components/TabBar.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
@@ -27,6 +27,7 @@ import {
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getLocalData, saveLocalData } from './lib/localDb';
 
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<any>(null);
@@ -34,7 +35,18 @@ export default function App() {
 
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories] = useState<CategoryInfo[]>(INITIAL_CATEGORIES);
+  // Combinar categorías base con personalizadas
+  const allCategories: CategoryInfo[] = React.useMemo(() => {
+    const custom = settings.customCategories || [];
+    const customCats: CategoryInfo[] = custom.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      icon: c.icon || 'Tag',
+      color: c.color || '#8E8E93',
+      description: c.description || '',
+    }));
+    return [...INITIAL_CATEGORIES, ...customCats];
+  }, [settings.customCategories]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [tabs, setTabs] = useState<TabConfig[]>(INITIAL_TABS);
   const [widgets, setWidgets] = useState<WidgetConfig[]>(INITIAL_WIDGETS);
@@ -44,6 +56,7 @@ export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const isRemoteSync = useRef(false);
+  const isLoaded = useRef(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -53,22 +66,23 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Load + subscribe user doc
+  // Load + subscribe user doc (Firebase + IndexedDB local)
   useEffect(() => {
     if (!firebaseUser) return;
-    const ref = doc(db, 'users', firebaseUser.uid);
-    const unsub = onSnapshot(ref, (snap) => {
-      isRemoteSync.current = true;
-      if (snap.exists()) {
-        const data = snap.data() as any;
-        if (data.settings) setSettings({ ...INITIAL_SETTINGS, ...data.settings });
-        setTransactions(data.transactions || []);
-        setBudgets(data.budgets || []);
-        if (data.tabs) setTabs(data.tabs);
-        if (data.widgets) setWidgets(data.widgets);
+    const userId = firebaseUser.uid;
+
+    // Cargar de IndexedDB primero (instantáneo, offline)
+    getLocalData(userId).then((local) => {
+      if (local) {
+        if (local.settings) setSettings({ ...INITIAL_SETTINGS, ...local.settings });
+        if (local.transactions) setTransactions(local.transactions);
+        if (local.budgets) setBudgets(local.budgets);
+        if (local.tabs) setTabs(local.tabs);
+        if (local.widgets) setWidgets(local.widgets);
       } else {
-        // create default
-        setDoc(ref, {
+        // Primera vez: guardar datos iniciales en IndexedDB
+        saveLocalData({
+          id: userId,
           settings: INITIAL_SETTINGS,
           transactions: [],
           budgets: [],
@@ -76,29 +90,73 @@ export default function App() {
           widgets: INITIAL_WIDGETS,
         });
       }
-      setTimeout(() => (isRemoteSync.current = false), 0);
+      // Marcar como cargado DESPUÉS de aplicar los datos (evita sobrescribir)
+      isLoaded.current = true;
     });
+
+    // Luego intentar Firebase (si hay billing)
+    const ref = doc(db, 'users', userId);
+    const unsub = onSnapshot(ref, (snap) => {
+      isRemoteSync.current = true;
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        // Solo actualizar si hay datos reales (no vacíos)
+        if (data.settings && Object.keys(data.settings).length > 0) {
+          setSettings({ ...INITIAL_SETTINGS, ...data.settings });
+        }
+        if (data.transactions && data.transactions.length > 0) {
+          setTransactions(data.transactions);
+        }
+        if (data.budgets && data.budgets.length > 0) {
+          setBudgets(data.budgets);
+        }
+        if (data.tabs && data.tabs.length > 0) setTabs(data.tabs);
+        if (data.widgets && data.widgets.length > 0) setWidgets(data.widgets);
+      }
+      setTimeout(() => (isRemoteSync.current = false), 0);
+    }, (err) => {
+      // Si Firebase falla (sin billing), usar solo IndexedDB
+      console.warn('Firebase no disponible, usando base de datos local:', err);
+    });
+
     return () => unsub();
   }, [firebaseUser]);
 
-  // Persist on changes (skip when remote sync)
-  const persist = async (patch: any) => {
-    if (!firebaseUser || isRemoteSync.current) return;
-    const ref = doc(db, 'users', firebaseUser.uid);
-    await setDoc(ref, patch, { merge: true });
-  };
+  // Persist on changes (Firebase + IndexedDB local)
+  const persist = useCallback(async () => {
+    if (!firebaseUser || isRemoteSync.current || !isLoaded.current) return;
 
-  useEffect(() => { if (!isRemoteSync.current) persist({ settings }); }, [settings]);
-  useEffect(() => { if (!isRemoteSync.current) persist({ transactions }); }, [transactions]);
-  useEffect(() => { if (!isRemoteSync.current) persist({ budgets }); }, [budgets]);
-  useEffect(() => { if (!isRemoteSync.current) persist({ tabs }); }, [tabs]);
-  useEffect(() => { if (!isRemoteSync.current) persist({ widgets }); }, [widgets]);
+    const userId = firebaseUser.uid;
+
+    // Guardar TODO en una sola escritura (evita condiciones de carrera)
+    await saveLocalData({
+      id: userId,
+      settings,
+      transactions,
+      budgets,
+      tabs,
+      widgets,
+    });
+
+    // Intentar guardar en Firebase (si hay billing)
+    try {
+      const ref = doc(db, 'users', userId);
+      await setDoc(ref, { settings, transactions, budgets, tabs, widgets }, { merge: true });
+    } catch {
+      // Sin billing o error de red - los datos ya están en IndexedDB
+    }
+  }, [firebaseUser, settings, transactions, budgets, tabs, widgets]);
+
+  // Un solo efecto: persiste cuando cualquier dato cambia
+  useEffect(() => { persist(); }, [persist]);
 
   const handleLogin = (user: { uid: string; displayName: string; email: string }) => {
     setSettings((prev) => ({ ...prev, userName: user.displayName, userEmail: user.email }));
   };
 
   const handleLogout = async () => {
+    // NO se borra la base de datos local: se conserva para que al
+    // volver a iniciar sesión el usuario recupere todos sus datos.
     await signOut(auth);
     setFirebaseUser(null);
     setSettings(INITIAL_SETTINGS);
@@ -106,6 +164,7 @@ export default function App() {
     setBudgets([]);
     setTabs(INITIAL_TABS);
     setWidgets(INITIAL_WIDGETS);
+    isLoaded.current = false;
   };
 
   const handleSaveTransaction = (newTx: Transaction) => {
@@ -142,7 +201,7 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <DashboardView
             transactions={transactions}
-            categories={categories}
+            categories={allCategories}
             budgets={budgets}
             bankEmails={[]}
             currencySymbol={settings.currencySymbol}
@@ -154,7 +213,7 @@ export default function App() {
         {activeTab === 'registro' && (
           <RegistroView
             transactions={transactions}
-            categories={categories}
+            categories={allCategories}
             currencySymbol={settings.currencySymbol}
             verifyPassword={(p) => p === 'AppleSecure2026!'}
             dashboardGroups={settings.dashboardGroups}
@@ -171,7 +230,7 @@ export default function App() {
           <BudgetView
             budgets={budgets}
             transactions={transactions}
-            categories={categories}
+            categories={allCategories}
             currencySymbol={settings.currencySymbol}
             onAddBudget={(b) => setBudgets((prev) => [...prev, b])}
             onDeleteBudget={(id) => setBudgets((prev) => prev.filter((b) => b.id !== id))}
@@ -202,7 +261,7 @@ export default function App() {
         isOpen={isNewTxModalOpen}
         onClose={() => setIsNewTxModalOpen(false)}
         onSave={handleSaveTransaction}
-        categories={categories}
+        categories={allCategories}
         currencySymbol={settings.currencySymbol}
       />
 
@@ -211,7 +270,7 @@ export default function App() {
         onClose={() => setIsProfileOpen(false)}
         settings={settings}
         transactions={transactions}
-        categories={categories}
+        categories={allCategories}
         currentPassword={settings.accountPassword || 'AppleSecure2026!'}
         onUpdateSettings={(s) => setSettings((prev) => ({ ...prev, ...s }))}
         onChangePassword={(oldP, newP) => {
