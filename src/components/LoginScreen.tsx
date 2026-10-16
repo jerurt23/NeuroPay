@@ -33,13 +33,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     }
   };
 
-  const friendlyError = (code?: string) => {
-    if (!code) return 'Error de autenticacion.';
-    if (code.includes('invalid-credential') || code.includes('wrong-password')) return 'Correo o contrasena incorrectos.';
-    if (code.includes('user-not-found')) return 'No existe una cuenta con ese correo.';
-    if (code.includes('too-many-requests')) return 'Demasiados intentos. Intenta mas tarde.';
-    if (code.includes('invalid-email')) return 'El correo no es valido.';
-    return 'Error de autenticacion.';
+  const friendlyError = (code?: string, message?: string) => {
+    if (!code && !message) return 'Error de autenticacion.';
+    const raw = `${code || ''} ${message || ''}`;
+    if (raw.includes('invalid-credential') || raw.includes('wrong-password')) return 'Correo o contrasena incorrectos.';
+    if (raw.includes('user-not-found') || raw.includes('EMAIL_NOT_FOUND')) return 'No existe una cuenta con ese correo.';
+    if (raw.includes('email-already-in-use') || raw.includes('EMAIL_EXISTS')) return 'Este correo ya esta registrado. Usa Iniciar sesion.';
+    if (raw.includes('operation-not-allowed') || raw.includes('OPERATION_NOT_ALLOWED')) return 'Habilita el metodo Email/Contrasena en Firebase Console -> Authentication -> Sign-in method.';
+    if (raw.includes('invalid-email') || raw.includes('INVALID_EMAIL')) return 'El correo no es valido.';
+    if (raw.includes('weak-password') || raw.includes('WEAK_PASSWORD')) return 'La contrasena es muy debil (minimo 6 caracteres).';
+    if (raw.includes('missing-password') || raw.includes('MISSING_PASSWORD')) return 'Falta la contrasena.';
+    if (raw.includes('too-many-requests')) return 'Demasiados intentos. Intenta mas tarde.';
+    if (raw.includes('network-request-failed')) return 'Problema de red. Revisa tu conexion.';
+    return code ? `Error de autenticacion (${code})` : 'Error de autenticacion.';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +64,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         onLogin({ uid: cred.user.uid, displayName: cred.user.displayName || email.split('@')[0], email });
       }
     } catch (err: any) {
-      setError(friendlyError(err?.code));
+      console.error('firebase-auth', err);
+      setError(friendlyError(err?.code, err?.message));
     } finally {
       setLoading(false);
     }
