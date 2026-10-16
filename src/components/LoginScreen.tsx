@@ -19,7 +19,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const handleReset = async () => {
     setError(null);
     if (!email) {
-      setError('Ingresa tu correo para restablecer la contraseña.');
+      setError('Ingresa tu correo para restablecer la contrasena.');
       return;
     }
     setLoading(true);
@@ -27,19 +27,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       await sendPasswordResetEmail(auth, email);
       setResetSent(true);
     } catch (err: any) {
-      setError(err?.message || 'No se pudo enviar el correo de recuperación.');
+      setError('No se pudo enviar el correo de recuperacion.');
     } finally {
       setLoading(false);
     }
   };
 
   const friendlyError = (code?: string) => {
-    if (!code) return 'Error de autenticación.';
-    if (code.includes('invalid-credential') || code.includes('wrong-password')) return 'Correo o contraseña incorrectos.';
+    if (!code) return 'Error de autenticacion.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password')) return 'Correo o contrasena incorrectos.';
     if (code.includes('user-not-found')) return 'No existe una cuenta con ese correo.';
-    if (code.includes('too-many-requests')) return 'Demasiados intentos. Intenta más tarde.';
-    if (code.includes('invalid-email')) return 'El correo no es válido.';
-    return 'Error de autenticación.';
+    if (code.includes('too-many-requests')) return 'Demasiados intentos. Intenta mas tarde.';
+    if (code.includes('invalid-email')) return 'El correo no es valido.';
+    return 'Error de autenticacion.';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,12 +77,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-zinc-200 p-6 space-y-4">
           <h2 className="text-lg font-bold text-zinc-900">
-            {isRegister ? 'Crear cuenta' : 'Iniciar sesión'}
+            {isRegister ? 'Crear cuenta' : 'Iniciar sesion'}
           </h2>
 
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs">
               {error}
+            </div>
+          )}
+
+          {resetSent && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs text-center">
+              Te enviamos un correo para restablecer la contrasena.
             </div>
           )}
 
@@ -112,23 +118,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Contraseña</label>
+            <label className="block text-xs font-medium text-zinc-600 mb-1">Contrasena</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="........"
               className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               required
               minLength={6}
             />
           </div>
-
-          {resetSent && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs text-center">
-              Te enviamos un correo para restablecer la contrase�a.
-            </div>
-          )}
 
           {!isRegister && (
             <button
@@ -137,7 +137,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               disabled={loading}
               className="w-full text-center text-xs text-blue-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed mb-1"
             >
-              �Olvidaste tu contrase�a?
+              Olvidaste tu contrasena?
             </button>
           )}
 
@@ -152,13 +152,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         </form>
 
         <p className="text-center text-sm text-zinc-500 mt-4">
-          {isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
+          {isRegister ? 'Ya tienes cuenta?' : 'No tienes cuenta?'}{' '}
           <button
             type="button"
             onClick={() => setIsRegister(!isRegister)}
             className="text-blue-600 font-medium hover:underline"
           >
-            {isRegister ? 'Inicia sesión' : 'Regístrate'}
+            {isRegister ? 'Inicia sesion' : 'Registrate'}
           </button>
         </p>
       </div>
