@@ -151,6 +151,8 @@ export default function App() {
             categories={categories}
             currencySymbol={settings.currencySymbol}
             verifyPassword={(p) => p === 'AppleSecure2026!'}
+            dashboardGroups={settings.dashboardGroups}
+            onUpdateDashboardGroups={(g) => setSettings((s) => ({ ...s, dashboardGroups: g }))}
             onSave={handleSaveTransaction}
           />
         )}

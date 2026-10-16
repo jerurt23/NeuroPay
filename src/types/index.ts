@@ -57,6 +57,8 @@ export interface Transaction {
   foodDetails?: FoodDetails;
   bankSyncMeta?: BankSyncMeta;
   synapseWeight?: number; // Calculated dynamic neural weight
+  customFields?: Record<string, any>;
+  customSchema?: { includeDate: boolean; fields: any[] };
 }
 
 export interface CategoryInfo {
@@ -138,6 +140,17 @@ export interface UserSettings {
   autoSyncBankEmails: boolean;
   userPhoto?: string;
   accountPassword?: string;
+  dashboardGroups?: Record<string, string>;
   chartType?: 'bar' | 'line';
   countryCode?: string;
+}
+
+export type CustomFieldType = 'char' | 'int' | 'float' | 'boolean';
+
+export interface CustomFieldDef {
+  id: string;
+  name: string;
+  type: CustomFieldType;
+  conditionField?: string;
+  conditionValue?: boolean;
 }

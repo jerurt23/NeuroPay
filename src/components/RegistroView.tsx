@@ -7,6 +7,8 @@ interface RegistroViewProps {
   categories: CategoryInfo[];
   currencySymbol: string;
   verifyPassword?: (p: string) => boolean;
+  dashboardGroups?: Record<string, string>;
+  onUpdateDashboardGroups?: (groups: Record<string, string>) => void;
   onSave: (tx: Transaction) => void;
 }
 
@@ -54,6 +56,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   categories,
   currencySymbol,
   verifyPassword,
+  dashboardGroups,
+  onUpdateDashboardGroups,
   onSave,
 }) => {
   const [mainCategory, setMainCategory] = useState<MainCategory | null>(null);
@@ -78,6 +82,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [newFieldType, setNewFieldType] = useState('char');
   const [newFieldConditionField, setNewFieldConditionField] = useState('');
   const [newFieldConditionValue, setNewFieldConditionValue] = useState(true);
+  const [addToDashboard, setAddToDashboard] = useState<null | 'yes' | 'no'>(null);
+  const [createNewDashCategory, setCreateNewDashCategory] = useState<null | 'yes' | 'no'>(null);
+  const [joinDashTarget, setJoinDashTarget] = useState('');
+  const [dashboardMessage, setDashboardMessage] = useState('');
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
 
@@ -874,6 +882,106 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         </div>
       )}
 
+      {mainCategory === 'nueva' && (
+        <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
+          <p className="text-xs font-medium text-zinc-600">Quieres agregarlo al dashboard?</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setAddToDashboard('yes');
+                setCreateNewDashCategory(null);
+                setDashboardMessage('');
+              }}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'yes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+            >
+              Si
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddToDashboard('no');
+                setCreateNewDashCategory(null);
+                setDashboardMessage('No se agrego al dashboard');
+                const next = { ...(dashboardGroups || {}) };
+                if (customTitle.trim()) next[customTitle.trim()] = 'NONE';
+                onUpdateDashboardGroups?.(next);
+              }}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'no' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+            >
+              No
+            </button>
+          </div>
+
+          {addToDashboard === 'yes' && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-zinc-600">Crear nueva categoria en el dashboard?</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateNewDashCategory('yes');
+                    setDashboardMessage('Se creo correctamente la nueva categoria en el grafico');
+                    const next = { ...(dashboardGroups || {}) };
+                    if (customTitle.trim()) next[customTitle.trim()] = 'NEW:' + customTitle.trim();
+                    onUpdateDashboardGroups?.(next);
+                  }}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'yes' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+                >
+                  Si
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateNewDashCategory('no');
+                    setDashboardMessage('');
+                  }}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'no' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+                >
+                  No
+                </button>
+              </div>
+
+              {createNewDashCategory === 'no' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-zinc-600 block">A que categoria lo deseas unir?</label>
+                  <select
+                    value={joinDashTarget}
+                    onChange={(e) => setJoinDashTarget(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                  >
+                    <option value="">Selecciona</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                    {customFieldDefs.map(f => (
+                      <option key={f.id} value={'field:' + f.id}>{f.name} (campo)</option>
+                    ))}
+                  </select>
+                  {joinDashTarget && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDashboardMessage('Se unio correctamente tu nueva categoria.');
+                        const next = { ...(dashboardGroups || {}) };
+                        if (customTitle.trim()) next[customTitle.trim()] = joinDashTarget;
+                        onUpdateDashboardGroups?.(next);
+                      }}
+                      className="w-full py-2 rounded-xl bg-blue-600 text-white text-sm font-medium"
+                    >
+                      Confirmar union
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {dashboardMessage && (
+            <p className="text-sm text-emerald-600 font-medium text-center">{dashboardMessage}</p>
+          )}
+        </div>
+      )}
       {/* Security collapsible */}
       <div className="rounded-xl border border-zinc-200 overflow-hidden">
         <button
@@ -1029,6 +1137,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     </div>
   );
 };
+
+
 
 
 
