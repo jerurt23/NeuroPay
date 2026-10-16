@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, History, Save, Check, Loader2, Trash2, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
 
@@ -9,6 +9,8 @@ interface RegistroViewProps {
   verifyPassword?: (p: string) => boolean;
   dashboardGroups?: Record<string, string>;
   onUpdateDashboardGroups?: (groups: Record<string, string>) => void;
+  customCategories?: any[];
+  onUpdateCustomCategories?: (cats: any[]) => void;
   onSave: (tx: Transaction) => void;
 }
 
@@ -58,6 +60,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   verifyPassword,
   dashboardGroups,
   onUpdateDashboardGroups,
+  customCategories,
+  onUpdateCustomCategories,
   onSave,
 }) => {
   const [mainCategory, setMainCategory] = useState<MainCategory | null>(null);
@@ -86,6 +90,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [createNewDashCategory, setCreateNewDashCategory] = useState<null | 'yes' | 'no'>(null);
   const [joinDashTarget, setJoinDashTarget] = useState('');
   const [dashboardMessage, setDashboardMessage] = useState('');
+  const [animationStep, setAnimationStep] = useState<'none' | 'create' | 'save' | 'done'>('none');
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'done'>('idle');
 
@@ -133,9 +138,70 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
   const incomeLocked = protectEnabled && !!gatePassword && !unlocked;
 
+  useEffect(() => {
+    const cc = (customCategories || []).find((c: any) => c.id === mainCategory);
+    if (cc) {
+      setCustomTitle(cc.name || '');
+      setCustomFieldDefs(cc.fields || []);
+      setIncludeDate(cc.includeDate ?? true);
+      setCustomValues({});
+    }
+  }, [mainCategory, customCategories]);
+
+  const handleCreateCategory = () => {
+    if (!customTitle.trim() || customFieldDefs.length === 0) return;
+    const newCat = { id: 'custom_' + Date.now(), name: customTitle.trim(), includeDate, fields: customFieldDefs };
+    const newCats = [...(customCategories || []), newCat];
+    const nextGroups = { ...(dashboardGroups || {}) };
+    let msg = 'No se agrego al dashboard';
+    if (addToDashboard !== 'yes') {
+      if (customTitle.trim()) nextGroups[customTitle.trim()] = 'NONE';
+      msg = 'No se agrego al dashboard';
+    } else if (createNewDashCategory === 'yes') {
+      if (customTitle.trim()) nextGroups[customTitle.trim()] = 'NEW:' + customTitle.trim();
+      msg = 'Se creo correctamente la nueva categoria en el grafico';
+    } else if (createNewDashCategory === 'no' && joinDashTarget) {
+      if (customTitle.trim()) nextGroups[customTitle.trim()] = joinDashTarget;
+      msg = 'Se unio correctamente tu nueva categoria.';
+    } else {
+      if (customTitle.trim()) nextGroups[customTitle.trim()] = 'NONE';
+      msg = 'No se agrego al dashboard';
+    }
+    const pending = pendingItems.map((p: any) => (p.category === 'otro' ? { ...p, category: newCat.id } : p));
+    setPendingItems(pending);
+    onUpdateCustomCategories?.(newCats);
+    onUpdateDashboardGroups?.(nextGroups);
+    setCustomTitle(newCat.name);
+    setCustomFieldDefs(newCat.fields);
+    setIncludeDate(newCat.includeDate);
+    setCustomValues({});
+    setDashboardMessage(msg);
+    const hadData = pending.length > 0;
+    setAnimationStep('create');
+    if (hadData) {
+      setTimeout(() => {
+        setAnimationStep('save');
+        setTimeout(() => {
+          handleSaveAll();
+        }, 100);
+      }, 1800);
+      setTimeout(() => {
+        setAnimationStep('done');
+        setTimeout(() => setAnimationStep('none'), 1500);
+      }, 3800);
+    } else {
+      setTimeout(() => {
+        setAnimationStep('done');
+        setTimeout(() => setAnimationStep('none'), 1500);
+      }, 1800);
+    }
+    setMainCategory(newCat.id as any);
+  };
+
   const handleAddToList = () => {
+    const isNewOrCustom = mainCategory === 'nueva' || !!(customCategories || []).find((c: any) => c.id === mainCategory);
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
+    if (!isNewOrCustom && (isNaN(parsedAmount) || parsedAmount <= 0)) return;
     if (mainCategory === 'ingresos' && incomeLocked) return;
 
     let itemName = '';
@@ -145,6 +211,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     let destVal = '';
     let brand = '';
     const hist = lastHistory;
+    const customCat = (customCategories || []).find((c: any) => c.id === mainCategory);
     let txType: 'expense' | 'income' = 'expense';
 
     if (mainCategory === 'comida') {
@@ -164,6 +231,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       itemName = customTitle || 'Ingreso';
       category = 'otro';
       txType = 'income';
+    } else if (customCat) {
+      itemName = customCat.name || 'Registro personalizado';
+      category = customCat.id;
+      txType = 'expense';
     } else {
       itemName = customTitle || 'Registro';
       category = 'otro';
@@ -179,7 +250,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       category,
       subcategory: subcat,
       itemName,
-      amount: mainCategory === 'nueva' ? customFieldDefs.filter((f: any) => f.type === 'float').reduce((s: number, f: any) => s + (parseFloat(customValues[f.id]) || 0), 0) : parsedAmount,
+      amount: (mainCategory === 'nueva' || !!(customCategories || []).find((c: any) => c.id === mainCategory)) ? customFieldDefs.filter((f: any) => f.type === 'float').reduce((s: number, f: any) => s + (parseFloat(customValues[f.id]) || 0), 0) : parsedAmount,
       quantity: parseFloat(quantity) || 1,
       unit,
       date: new Date().toISOString().split('T')[0],
@@ -187,8 +258,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       medicineBrand: brand,
       transportOrigin: originVal,
       transportDestination: destVal,
-      customFields: mainCategory === 'nueva' ? customFieldData : undefined,
-      customSchema: mainCategory === 'nueva' ? { includeDate, fields: customFieldDefs } : undefined,
+      customFields: (mainCategory === 'nueva' || !!(customCategories || []).find((cc: any) => cc.id === mainCategory)) ? customFieldData : undefined,
+      customSchema: mainCategory === 'nueva' ? { includeDate, fields: customFieldDefs } : ((customCategories || []).find((cc: any) => cc.id === mainCategory) || undefined),
       historyAmount: hist?.amount,
       historyDate: hist?.date,
     };
@@ -334,6 +405,21 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     return tx.category === mainCategory;
   };
 
+  if (animationStep !== 'none') {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex items-center justify-center">
+        <div className="text-center space-y-6 px-6">
+          <div className="mx-auto w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl flex items-center justify-center animate-pulse">
+            <span className="text-white text-3xl font-bold">+</span>
+          </div>
+          <p className="text-3xl font-extrabold text-zinc-900">
+            {animationStep === 'create' ? 'Se creo una nueva categoria' : animationStep === 'save' ? 'Se registro correctamente tus datos' : 'Procesando...'}
+          </p>
+          <p className="text-sm text-zinc-500">{dashboardMessage}</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-5 max-w-lg mx-auto">
       <div className="flex items-center justify-between">
@@ -982,6 +1068,66 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           )}
         </div>
       )}
+      {(customCategories || []).some((c: any) => c.id === mainCategory) && (
+        <div className="p-3 rounded-xl bg-white border border-zinc-200 space-y-3">
+          <p className="text-sm font-bold text-zinc-900">{customTitle}</p>
+          {includeDate && (
+            <div>
+              <label className="text-xs font-medium text-zinc-600 mb-1 block">Fecha de creacion</label>
+              <input
+                type="date"
+                value={customValues.__date__ || new Date().toISOString().split('T')[0]}
+                onChange={(e) => setCustomValues(v => ({ ...v, __date__: e.target.value }))}
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+              />
+            </div>
+          )}
+          {customFieldDefs.map((f: any) => {
+            if (f.conditionField) {
+              const condVal = customValues[f.conditionField];
+              if (Boolean(condVal) !== f.conditionValue) return null;
+            }
+            return (
+              <div key={f.id}>
+                <label className="text-xs font-medium text-zinc-600 mb-1 block">{f.name}</label>
+                {f.type === 'char' && (
+                  <input type="text" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                )}
+                {f.type === 'int' && (
+                  <input type="number" step="1" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                )}
+                {f.type === 'float' && (
+                  <input type="number" step="0.01" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                )}
+                {f.type === 'boolean' && (
+                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                    <input type="checkbox" checked={!!customValues[f.id]} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.checked }))} className="w-4 h-4" />
+                    {f.name}
+                  </label>
+                )}
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={handleAddToList}
+            className="w-full py-3 rounded-2xl border-2 border-dashed border-blue-300 text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Agregar a la lista
+          </button>
+        </div>
+      )}
+      {mainCategory === 'nueva' && customTitle.trim() && customFieldDefs.length > 0 && (
+        <button
+          type="button"
+          onClick={handleCreateCategory}
+          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2"
+        >
+          Crear nueva categoria
+        </button>
+      )}
+
       {/* Security collapsible */}
       <div className="rounded-xl border border-zinc-200 overflow-hidden">
         <button
@@ -1137,7 +1283,6 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     </div>
   );
 };
-
 
 
 
