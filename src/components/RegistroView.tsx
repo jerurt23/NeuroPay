@@ -222,6 +222,15 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     const customCat = (customCategories || []).find((c: any) => c.id === mainCategory);
     let txType: 'expense' | 'income' = 'expense';
 
+    // Para registros con campos personalizados, el nombre del registro es lo
+    // que el usuario escribio en el primer campo de texto, no el nombre de la
+    // categoria (que es solo la etiqueta del grupo).
+    const firstTextField = (fields: any[]) =>
+      (fields || [])
+        .filter((f: any) => f.type === 'char')
+        .map((f: any) => customValues[f.id])
+        .find((v: any) => v !== undefined && v !== null && String(v).trim() !== '');
+
     if (mainCategory === 'comida') {
       itemName = customTitle || selectedItem || newItemName || 'Alimento';
       subcat = foodSubcategory || '';
@@ -240,11 +249,18 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       category = 'otro';
       txType = 'income';
     } else if (customCat) {
-      itemName = customCat.name || 'Registro personalizado';
+      itemName = String(firstTextField(customCat.fields) || '').trim()
+        || customItem
+        || customCat.name
+        || 'Registro personalizado';
       category = customCat.id;
       txType = 'expense';
     } else {
-      itemName = customTitle || 'Registro';
+      itemName = String(firstTextField(customFieldDefs) || '').trim()
+        || customItem
+        || customTitle
+        || newItemName
+        || 'Registro';
       category = 'otro';
     }
 

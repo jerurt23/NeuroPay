@@ -6,6 +6,8 @@ import { calculateTotals } from '../utils/budgetCalculations.ts';
 interface DashboardViewProps {
   transactions: Transaction[];
   categories: CategoryInfo[];
+  customCategories?: { id: string; name: string }[];
+  dashboardGroups?: Record<string, string>;
   budgets: Budget[];
   bankEmails: BankEmail[];
   currencySymbol: string;
@@ -22,6 +24,8 @@ const EXPENSE_COLOR = '#fb7185';
 export const DashboardView: React.FC<DashboardViewProps> = ({
   transactions,
   categories,
+  customCategories,
+  dashboardGroups,
   budgets,
   bankEmails,
   currencySymbol,
@@ -108,6 +112,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [transactions, periodFilter]);
 
   const maxChartValue = Math.max(...chartData.flatMap(d => [d.income, d.expense]), 1);
+
+  /**
+   * Gastos agrupados por categoria, respetando lo que el usuario eligio al
+   * crear la categoria:
+   *   'NONE'            -> no aparece en el dashboard
+   *   'NEW:<nombre>'    -> grupo propio con su nombre
+   *   '<id de categoria>' -> se une a esa categoria del dashboard
+   * Las categorias base siempre aparecen con sus transacciones.
+   */
+  const categoryBreakdown = useMemo(() => {
+    // categoria de la transaccion -> categoria del dashboard
+    const target = new Map<string, string>();
+    const nameOf = new Map<string, string>();
+    const colorOf = new Map<string, string>();
+
+    categories.forEach((c) => {
+      target.set(c.id, c.id);
+      nameOf.set(c.id, c.name);
+      colorOf.set(c.id, c.color);
+    });
+
+    (customCategories || []).forEach((c) => {
+      const group = dashboardGroups?.[c.name];
+      if (!group || group === 'NONE') return; // el usuario decidio no mostrarla
+      if (group.startsWith('NEW:')) {
+        // Grupo propio: conserva el nombre que le dio el usuario.
+        target.set(c.id, c.id);
+        nameOf.set(c.id, c.name);
+      } else {
+        // Se une a una categoria base, que conserva su nombre.
+        target.set(c.id, group);
+      }
+    });
+
+    const PALETTE = ['#8E8E93', '#0A84FF', '#30D158', '#FF9500', '#BF5AF2', '#FF2D55', '#64D2FF', '#5E5CE6'];
+    let nextColor = 0;
+
+    const totals = new Map<string, { id: string; name: string; amount: number; count: number }>();
+
+    transactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        const groupId = target.get(t.category);
+        if (!groupId) return; // categoria oculta por decision del usuario
+
+        const name = nameOf.get(groupId) || groupId;
+
+        if (!colorOf.has(groupId)) colorOf.set(groupId, PALETTE[nextColor++ % PALETTE.length]);
+
+        const cur = totals.get(groupId) || { id: groupId, name, amount: 0, count: 0 };
+        cur.amount += t.amount;
+        cur.count += 1;
+        totals.set(groupId, cur);
+      });
+
+    return Array.from(totals.values())
+      .map((g) => ({ ...g, color: colorOf.get(g.id) || '#8E8E93' }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [transactions, categories, customCategories, dashboardGroups]);
 
   return (
     <div className="space-y-6">
@@ -431,6 +494,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           })}
         </div>
       </div>
+
+      {/* Gastos por categoria. Solo aparecen las que el usuario decidio
+          mostrar en el dashboard. */}
+      {categoryBreakdown.length > 0 && (
+        <div className={`p-5 rounded-2xl surface-card border-line ${showTypePicker ? 'focus-dimmed' : ''}`}>
+          <div className="flex items-center gap-2 mb-4">
+            <PieChart className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <h3 className="font-bold text-main">Gastos por categoría</h3>
+          </div>
+
+          <div className="space-y-3">
+            {categoryBreakdown.map((g) => {
+              const pct = totals.totalExpense > 0 ? (g.amount / totals.totalExpense) * 100 : 0;
+              return (
+                <div key={g.id}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: g.color }}
+                      />
+                      <span className="text-sm text-main truncate">{g.name}</span>
+                      <span className="text-[10px] text-muted flex-shrink-0">
+                        {g.count} · {pct.toFixed(0)}%
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-main flex-shrink-0">
+                      {currencySymbol}
+                      {g.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.max(pct, 1)}%`, backgroundColor: g.color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Menu central de tipos de grafico */}
       {showTypePicker && (
