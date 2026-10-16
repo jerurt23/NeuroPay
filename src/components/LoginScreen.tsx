@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, LogIn } from 'lucide-react';
 import { auth } from '../lib/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 
 interface LoginScreenProps {
   onLogin: (user: { uid: string; displayName: string; email: string }) => void;
@@ -14,6 +14,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleReset = async () => {
+    setError(null);
+    if (!email) {
+      setError('Ingresa tu correo para restablecer la contrase帽a.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetSent(true);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo enviar el correo de recuperaci贸n.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const friendlyError = (code?: string) => {
+    if (!code) return 'Error de autenticaci贸n.';
+    if (code.includes('invalid-credential') || code.includes('wrong-password')) return 'Correo o contrase帽a incorrectos.';
+    if (code.includes('user-not-found')) return 'No existe una cuenta con ese correo.';
+    if (code.includes('too-many-requests')) return 'Demasiados intentos. Intenta m谩s tarde.';
+    if (code.includes('invalid-email')) return 'El correo no es v谩lido.';
+    return 'Error de autenticaci贸n.';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +58,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
         onLogin({ uid: cred.user.uid, displayName: cred.user.displayName || email.split('@')[0], email });
       }
     } catch (err: any) {
-      setError(err?.message || 'Error de autenticaci贸n');
+      setError(friendlyError(err?.code));
     } finally {
       setLoading(false);
     }
@@ -96,6 +123,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               minLength={6}
             />
           </div>
+
+          {resetSent && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs text-center">
+              Te enviamos un correo para restablecer la contrase馻.
+            </div>
+          )}
+
+          {!isRegister && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={loading}
+              className="w-full text-center text-xs text-blue-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed mb-1"
+            >
+              縊lvidaste tu contrase馻?
+            </button>
+          )}
 
           <button
             type="submit"
