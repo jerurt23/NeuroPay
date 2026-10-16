@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HeaderNav } from './components/HeaderNav.tsx';
 import { TabBar } from './components/TabBar.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
@@ -57,6 +57,46 @@ export default function App() {
 
   const isRemoteSync = useRef(false);
   const isLoaded = useRef(false);
+
+  // Tema efectivo: resuelve 'auto' segun la preferencia del sistema
+  const isDark = useMemo(() => {
+    if (settings.theme === 'dark') return true;
+    if (settings.theme === 'light') return false;
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }, [settings.theme]);
+
+  // Aplicar tema al documento
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
+  // Escuchar cambios del sistema cuando el tema es 'auto'
+  useEffect(() => {
+    if (settings.theme !== 'auto') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => setSettings((s) => ({ ...s }));
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [settings.theme]);
+
+  // Filtro de temperatura de color (similar a True Tone)
+  const tempFilter = useMemo(() => {
+    if (settings.trueTone) {
+      return 'sepia(0.09) saturate(1.08) hue-rotate(-3deg) brightness(0.99)';
+    }
+    switch (settings.colorTemperature) {
+      case 'warm':
+        return 'sepia(0.18) saturate(1.12) hue-rotate(-8deg) brightness(0.98)';
+      case 'cool':
+        return 'saturate(1.06) hue-rotate(8deg) brightness(1.01)';
+      default:
+        return 'none';
+    }
+  }, [settings.trueTone, settings.colorTemperature]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--truetone-filter', tempFilter);
+  }, [tempFilter]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (user) => {
@@ -184,9 +224,13 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f9fa] text-zinc-900">
+    <div
+      className="true-tone-layer min-h-screen flex flex-col surface-page text-main"
+      style={{ backgroundColor: isDark ? '#0a0a0b' : '#f8f9fa' }}
+    >
       <HeaderNav
         theme={settings.theme}
+        isDark={isDark}
         onThemeChange={(theme) => setSettings((s) => ({ ...s, theme }))}
         unreadCount={0}
         onOpenNotifications={() => {}}

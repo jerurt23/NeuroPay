@@ -4,6 +4,7 @@ import { ThemeMode } from '../types/index.ts';
 
 interface HeaderNavProps {
   theme: ThemeMode;
+  isDark: boolean;
   onThemeChange: (theme: ThemeMode) => void;
   unreadCount: number;
   onOpenNotifications: () => void;
@@ -14,6 +15,7 @@ interface HeaderNavProps {
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
   theme,
+  isDark,
   onThemeChange,
   unreadCount,
   onOpenNotifications,
@@ -22,13 +24,13 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   userPhoto,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-xl border-b border-zinc-200/50 px-4 sm:px-6 py-3">
+    <header className="ios-glass sticky top-0 z-40 w-full border-b border-line px-4 sm:px-6 py-3">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
             N
           </div>
-          <h1 className="text-lg font-bold text-zinc-900 tracking-tight">
+          <h1 className="text-lg font-bold text-main tracking-tight">
             NEUROPAY
           </h1>
         </div>
@@ -36,17 +38,18 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onThemeChange(theme === 'light' ? 'dark' : 'light')}
-            className="p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
+            onClick={() => onThemeChange(isDark ? 'light' : 'dark')}
+            className="p-2 rounded-full bg-zinc-100 hover-surface text-muted transition-colors"
             aria-label="Cambiar tema"
+            title={theme === 'auto' ? 'Tema automatico' : isDark ? 'Oscuro' : 'Claro'}
           >
-            {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
 
           <button
             type="button"
             onClick={onOpenNotifications}
-            className="relative p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors"
+            className="relative p-2 rounded-full bg-zinc-100 hover-surface text-muted transition-colors"
             aria-label="Notificaciones"
           >
             <Bell className="w-4 h-4" />

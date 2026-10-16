@@ -123,18 +123,18 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  return (
  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
  <div
- className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-white900 rounded-t-[32px] sm:rounded-[32px] border border-zinc-200800 shadow-2xl p-5 sm:p-6 animate-in fade-in slide-in-from-bottom duration-300"
+ className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto surface-card rounded-t-[32px] sm:rounded-[32px] border border-line shadow-2xl p-5 sm:p-6 animate-in fade-in slide-in-from-bottom duration-300"
  >
  {/* iOS Drag Handle on Mobile */}
- <div className="w-12 h-1 bg-zinc-300700 rounded-full mx-auto mb-4 sm:hidden" />
+ <div className="w-12 h-1 bg-zinc-300 rounded-full mx-auto mb-4 sm:hidden" />
 
  {/* Header */}
- <div className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-100800">
+ <div className="flex items-center justify-between mb-4 pb-2 border-b border-line">
  <div>
- <h2 className="text-lg font-bold text-zinc-900100">
+ <h2 className="text-lg font-bold text-main">
  Nuevo Registro Financiero
  </h2>
- <p className="text-xs text-zinc-500400">
+ <p className="text-xs text-muted">
  Conectado a la Red Neuronal y Bóveda Cifrada E2EE
  </p>
  </div>
@@ -142,7 +142,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  type="button"
  onClick={onClose}
  aria-label="Cerrar modal"
- className="p-2 rounded-full bg-zinc-100800 text-zinc-500 hover:text-zinc-800:text-zinc-200"
+ className="p-2 rounded-full surface-input text-muted hover:text-zinc-800:text-zinc-200"
  >
  <X className="w-5 h-5" />
  </button>
@@ -150,14 +150,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
  <form onSubmit={handleSubmit} className="space-y-4">
  {/* Segmented Control: Gasto vs Ingreso */}
- <div className="grid grid-cols-2 p-1 bg-zinc-100800 rounded-2xl">
+ <div className="grid grid-cols-2 p-1 surface-input rounded-2xl">
  <button
  type="button"
  onClick={() => setType('expense')}
  className={`py-2 text-xs font-semibold rounded-xl transition-all ${
  type === 'expense'
  ? 'bg-rose-500 text-white shadow-md'
- : 'text-zinc-600400'
+ : 'text-muted'
  }`}
  >
  Egreso / Compra
@@ -168,7 +168,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  className={`py-2 text-xs font-semibold rounded-xl transition-all ${
  type === 'income'
  ? 'bg-emerald-600 text-white shadow-md'
- : 'text-zinc-600400'
+ : 'text-muted'
  }`}
  >
  Ingreso / Abono
@@ -176,8 +176,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  </div>
 
  {/* Amount Display with Large iOS Style Typography */}
- <div className="p-4 rounded-2xl bg-zinc-50800/50 border border-zinc-200/60700/60 flex items-center justify-between">
- <label htmlFor="tx-amount-input" className="text-xs font-medium text-zinc-500400">
+ <div className="p-4 rounded-2xl surface-input border border-line flex items-center justify-between">
+ <label htmlFor="tx-amount-input" className="text-xs font-medium text-muted">
  Monto Total
  </label>
  <div className="flex items-center gap-1">
@@ -193,14 +193,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="0.00"
  value={amount}
  onChange={(e) => setAmount(e.target.value)}
- className="w-36 sm:w-44 text-right text-2xl sm:text-3xl font-bold bg-transparent border-none text-zinc-900 focus:outline-none font-mono"
+ className="w-36 sm:w-44 text-right text-2xl sm:text-3xl font-bold bg-transparent border-none text-main focus:outline-none font-mono"
  />
  </div>
  </div>
 
  {/* Category Selector Grid */}
  <div>
- <label className="block text-xs font-semibold text-zinc-600300 mb-2">
+ <label className="block text-xs font-semibold text-muted mb-2">
  Categoría
  </label>
  <div className="grid grid-cols-4 gap-2">
@@ -213,8 +213,8 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  onClick={() => setCategory(cat.id as StandardCategory)}
  className={`flex flex-col items-center justify-center p-2.5 rounded-2xl border transition-all ${
  isSelected
- ? 'border-blue-500 bg-blue-500/10 text-blue-600400 font-semibold shadow-sm'
- : 'border-zinc-200800 bg-zinc-50/50800/40 text-zinc-600400 hover:border-zinc-300'
+ ? 'border-blue-500 bg-blue-500/10 text-blue-600 font-semibold shadow-sm'
+ : 'border-line bg-zinc-50/50800/40 text-muted hover:border-zinc-300'
  }`}
  >
  <span className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: cat.color }} />
@@ -227,7 +227,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
  {/* Title / Description */}
  <div>
- <label htmlFor="tx-title-input" className="block text-xs font-semibold text-zinc-600300 mb-1">
+ <label htmlFor="tx-title-input" className="block text-xs font-semibold text-muted mb-1">
  Título o Concepto
  </label>
  <input
@@ -236,7 +236,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="Ej. Almuerzo, Uber a la oficina, Pastillas..."
  value={title}
  onChange={(e) => setTitle(e.target.value)}
- className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-100800 border border-zinc-200700 text-sm text-zinc-900100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+ className="w-full px-3.5 py-2.5 rounded-2xl surface-input border border-line text-sm text-main focus:outline-none focus:ring-2 focus:ring-blue-500"
  />
  </div>
 
@@ -247,17 +247,17 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  <div
  className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/20 space-y-3 animate-in fade-in duration-200"
  >
- <div className="flex items-center gap-2 text-xs font-bold text-blue-600400">
+ <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
  <Navigation className="w-4 h-4" />
  <span>Ruta Punto a Punto & Movilidad</span>
  </div>
 
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
  <div>
- <label htmlFor="tx-origin-input" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-origin-input" className="text-[11px] font-medium text-muted block mb-0.5">
  Origen (Punto A)
  </label>
- <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white800 border border-zinc-200700">
+ <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl surface-input border border-line">
  <MapPin className="w-3.5 h-3.5 text-blue-500" />
  <input
  id="tx-origin-input"
@@ -266,16 +266,16 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="Ej. Miraflores"
  value={origin}
  onChange={(e) => setOrigin(e.target.value)}
- className="w-full text-xs bg-transparent border-none text-zinc-900100 focus:outline-none"
+ className="w-full text-xs bg-transparent border-none text-main focus:outline-none"
  />
  </div>
  </div>
 
  <div>
- <label htmlFor="tx-dest-input" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-dest-input" className="text-[11px] font-medium text-muted block mb-0.5">
  Destino (Punto B)
  </label>
- <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white800 border border-zinc-200700">
+ <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl surface-input border border-line">
  <Navigation className="w-3.5 h-3.5 text-indigo-500" />
  <input
  id="tx-dest-input"
@@ -284,7 +284,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="Ej. San Isidro"
  value={destination}
  onChange={(e) => setDestination(e.target.value)}
- className="w-full text-xs bg-transparent border-none text-zinc-900100 focus:outline-none"
+ className="w-full text-xs bg-transparent border-none text-main focus:outline-none"
  />
  </div>
  </div>
@@ -292,14 +292,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
 
  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
  <div>
- <label htmlFor="tx-mode-select" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-mode-select" className="text-[11px] font-medium text-muted block mb-0.5">
  Medio
  </label>
  <select
  id="tx-mode-select"
  value={transportMode}
  onChange={(e) => setTransportMode(e.target.value as TransportMode)}
- className="w-full px-2.5 py-1.5 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-2.5 py-1.5 rounded-xl surface-input border border-line text-xs text-muted"
  >
  <option value="uber_cabify">Uber / Cabify</option>
  <option value="taxi">Taxi Urbano</option>
@@ -311,7 +311,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  </div>
 
  <div>
- <label htmlFor="tx-distance-input" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-distance-input" className="text-[11px] font-medium text-muted block mb-0.5">
  Distancia (km)
  </label>
  <input
@@ -321,7 +321,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="6.5"
  value={distanceKm}
  onChange={(e) => setDistanceKm(e.target.value)}
- className="w-full px-2.5 py-1.5 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-2.5 py-1.5 rounded-xl surface-input border border-line text-xs text-muted"
  />
  </div>
 
@@ -333,7 +333,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  onChange={(e) => setReturnTrip(e.target.checked)}
  className="w-4 h-4 text-blue-600 rounded"
  />
- <label htmlFor="returnTripCheck" className="text-xs text-zinc-700300">
+ <label htmlFor="returnTripCheck" className="text-xs text-muted">
  Ida y Vuelta
  </label>
  </div>
@@ -346,14 +346,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  <div
  className="p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 space-y-3 animate-in fade-in duration-200"
  >
- <div className="flex items-center gap-2 text-xs font-bold text-rose-600400">
+ <div className="flex items-center gap-2 text-xs font-bold text-rose-600">
  <Pill className="w-4 h-4" />
  <span>Detalles de Farmacia y Salud</span>
  </div>
 
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
  <div>
- <label htmlFor="tx-pharmacy-input" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-pharmacy-input" className="text-[11px] font-medium text-muted block mb-0.5">
  Farmacia / Clínica
  </label>
  <input
@@ -362,12 +362,12 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="Ej. InkaFarma, Mifarma, CVS"
  value={pharmacy}
  onChange={(e) => setPharmacy(e.target.value)}
- className="w-full px-3 py-2 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-3 py-2 rounded-xl surface-input border border-line text-xs text-muted"
  />
  </div>
 
  <div>
- <label htmlFor="tx-dose-input" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-dose-input" className="text-[11px] font-medium text-muted block mb-0.5">
  Dosis o Medicamento
  </label>
  <input
@@ -376,7 +376,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  placeholder="Ej. Paracetamol 500mg c/8h"
  value={doseNotes}
  onChange={(e) => setDoseNotes(e.target.value)}
- className="w-full px-3 py-2 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-3 py-2 rounded-xl surface-input border border-line text-xs text-muted"
  />
  </div>
  </div>
@@ -389,7 +389,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  onChange={(e) => setPrescriptionNeeded(e.target.checked)}
  className="w-4 h-4 text-rose-500 rounded"
  />
- <label htmlFor="prescriptionCheck" className="text-xs text-zinc-700300">
+ <label htmlFor="prescriptionCheck" className="text-xs text-muted">
  Requiere receta médica archivada
  </label>
  </div>
@@ -401,21 +401,21 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  <div
  className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3 animate-in fade-in duration-200"
  >
- <div className="flex items-center gap-2 text-xs font-bold text-amber-600400">
+ <div className="flex items-center gap-2 text-xs font-bold text-amber-600">
  <Utensils className="w-4 h-4" />
  <span>Tipo de Consumo Gastronómico</span>
  </div>
 
  <div className="grid grid-cols-2 gap-2">
  <div>
- <label htmlFor="tx-place-select" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-place-select" className="text-[11px] font-medium text-muted block mb-0.5">
  Establecimiento
  </label>
  <select
  id="tx-place-select"
  value={placeType}
  onChange={(e) => setPlaceType(e.target.value as any)}
- className="w-full px-2.5 py-1.5 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-2.5 py-1.5 rounded-xl surface-input border border-line text-xs text-muted"
  >
  <option value="supermercado">Supermercado (Wong, Walmart)</option>
  <option value="restaurante">Restaurante</option>
@@ -426,14 +426,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  </div>
 
  <div>
- <label htmlFor="tx-meal-select" className="text-[11px] font-medium text-zinc-500400 block mb-0.5">
+ <label htmlFor="tx-meal-select" className="text-[11px] font-medium text-muted block mb-0.5">
  Momento del Día
  </label>
  <select
  id="tx-meal-select"
  value={meal}
  onChange={(e) => setMeal(e.target.value as any)}
- className="w-full px-2.5 py-1.5 rounded-xl bg-white800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-2.5 py-1.5 rounded-xl surface-input border border-line text-xs text-muted"
  >
  <option value="desayuno">Desayuno</option>
  <option value="almuerzo">Almuerzo</option>
@@ -448,14 +448,14 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  {/* Payment Method & Date */}
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
  <div>
- <label htmlFor="tx-paymethod-select" className="block text-xs font-semibold text-zinc-600300 mb-1">
+ <label htmlFor="tx-paymethod-select" className="block text-xs font-semibold text-muted mb-1">
  Método de Pago
  </label>
  <select
  id="tx-paymethod-select"
  value={paymentMethod}
  onChange={(e) => setPaymentMethod(e.target.value as any)}
- className="w-full px-3 py-2 rounded-2xl bg-zinc-100800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-3 py-2 rounded-2xl surface-input border border-line text-xs text-muted"
  >
  <option value="banca_movil">Banca Móvil (BBVA / BCP / Nu)</option>
  <option value="tarjeta_credito">Tarjeta de Crédito</option>
@@ -466,7 +466,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  </div>
 
  <div>
- <label htmlFor="tx-date-input" className="block text-xs font-semibold text-zinc-600300 mb-1">
+ <label htmlFor="tx-date-input" className="block text-xs font-semibold text-muted mb-1">
  Fecha
  </label>
  <input
@@ -474,7 +474,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({
  type="date"
  value={date}
  onChange={(e) => setDate(e.target.value)}
- className="w-full px-3 py-2 rounded-2xl bg-zinc-100800 border border-zinc-200700 text-xs text-zinc-800200"
+ className="w-full px-3 py-2 rounded-2xl surface-input border border-line text-xs text-muted"
  />
  </div>
  </div>

@@ -67,12 +67,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  return (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xl">
  <div
- className="w-full max-w-md bg-white/95900/95 border border-white/20 rounded-[32px] p-6 sm:p-7 shadow-2xl backdrop-blur-2xl relative animate-in fade-in zoom-in-95 duration-200"
+ className="w-full max-w-md surface-card border border-white/20 rounded-[32px] p-6 sm:p-7 shadow-2xl backdrop-blur-2xl relative animate-in fade-in zoom-in-95 duration-200"
  >
  <button
  type="button"
  onClick={onClose}
- className="absolute top-5 right-5 p-2 rounded-full text-zinc-400 hover:text-zinc-600:text-zinc-200"
+ className="absolute top-5 right-5 p-2 rounded-full text-zinc-400 hover:text-muted:text-zinc-200"
  >
  <X className="w-5 h-5" />
  </button>
@@ -86,7 +86,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  ? 'bg-emerald-500 text-white scale-110'
  : isBiometricScanning
  ? 'bg-blue-600 text-white animate-pulse scale-105'
- : 'bg-zinc-100800 text-blue-600400'
+ : 'surface-input text-blue-600'
  }`}
  >
  {authSuccess ? (
@@ -99,10 +99,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  </div>
  </div>
 
- <h2 className="text-xl font-bold text-zinc-900100">
+ <h2 className="text-xl font-bold text-main">
  {isLocked ? 'Desbloquear Bóveda Financiera' : 'Autenticación y Registro E2EE'}
  </h2>
- <p className="text-xs text-zinc-500400 mt-1 max-w-xs">
+ <p className="text-xs text-muted mt-1 max-w-xs">
  Cifrado de grado militar con clave derivada de tu contraseña maestra.
  </p>
  </div>
@@ -113,7 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  type="button"
  onClick={handleSimulateFaceID}
  disabled={isBiometricScanning}
- className="w-full py-3 px-4 rounded-2xl bg-zinc-100800 hover:bg-zinc-200:bg-zinc-700 text-zinc-800200 font-semibold text-xs flex items-center justify-center gap-2 transition-all"
+ className="w-full py-3 px-4 rounded-2xl surface-input hover:bg-zinc-200:bg-zinc-700 text-muted font-semibold text-xs flex items-center justify-center gap-2 transition-all"
  >
  <ScanFace className="w-4 h-4 text-blue-500" />
  <span>{isBiometricScanning ? 'Escaneando rostro...' : 'Desbloquear con Face ID / Touch ID'}</span>
@@ -121,54 +121,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  </div>
 
  <div className="relative flex py-2 items-center">
- <div className="flex-grow border-t border-zinc-200800"></div>
+ <div className="flex-grow border-t border-line"></div>
  <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-zinc-400">
  o con Clave Maestra
  </span>
- <div className="flex-grow border-t border-zinc-200800"></div>
+ <div className="flex-grow border-t border-line"></div>
  </div>
 
  {/* Form */}
  <form onSubmit={handleSubmit} className="space-y-3 mt-2">
  {mode === 'register' && (
  <div>
- <label className="text-[11px] font-semibold text-zinc-500400 block mb-1">
+ <label className="text-[11px] font-semibold text-muted block mb-1">
  Nombre Completo
  </label>
- <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-zinc-100800 border border-zinc-200700">
+ <div className="flex items-center gap-2 px-3 py-2 rounded-2xl surface-input border border-line">
  <User className="w-4 h-4 text-zinc-400" />
  <input
  type="text"
  required
  value={userName}
  onChange={(e) => setUserName(e.target.value)}
- className="w-full text-xs bg-transparent border-none text-zinc-900100 focus:outline-none"
+ className="w-full text-xs bg-transparent border-none text-main focus:outline-none"
  />
  </div>
  </div>
  )}
 
  <div>
- <label className="text-[11px] font-semibold text-zinc-500400 block mb-1">
+ <label className="text-[11px] font-semibold text-muted block mb-1">
  Correo Electrónico (para vincular alertas bancarias)
  </label>
- <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-zinc-100800 border border-zinc-200700">
+ <div className="flex items-center gap-2 px-3 py-2 rounded-2xl surface-input border border-line">
  <Mail className="w-4 h-4 text-zinc-400" />
  <input
  type="email"
  required
  value={userEmail}
  onChange={(e) => setUserEmail(e.target.value)}
- className="w-full text-xs bg-transparent border-none text-zinc-900100 focus:outline-none"
+ className="w-full text-xs bg-transparent border-none text-main focus:outline-none"
  />
  </div>
  </div>
 
  <div>
- <label className="text-[11px] font-semibold text-zinc-500400 block mb-1">
+ <label className="text-[11px] font-semibold text-muted block mb-1">
  Clave Maestra E2EE (Desencriptación AES-256)
  </label>
- <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-zinc-100800 border border-zinc-200700">
+ <div className="flex items-center gap-2 px-3 py-2 rounded-2xl surface-input border border-line">
  <Key className="w-4 h-4 text-zinc-400" />
  <input
  type="password"
@@ -176,7 +176,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  value={masterPassword}
  onChange={(e) => setMasterPassword(e.target.value)}
  placeholder="Ingresa tu clave maestra..."
- className="w-full text-xs bg-transparent border-none text-zinc-900100 focus:outline-none font-mono"
+ className="w-full text-xs bg-transparent border-none text-main focus:outline-none font-mono"
  />
  </div>
  </div>
@@ -195,7 +195,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
  <button
  type="button"
  onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
- className="text-xs text-blue-600400 hover:underline font-medium"
+ className="text-xs text-blue-600 hover:underline font-medium"
  >
  {mode === 'login'
  ? '¿No tienes cuenta? Regístrate aquí'

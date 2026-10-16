@@ -7,6 +7,8 @@ import {
   Grid,
   Check,
   GripVertical,
+  Flame,
+  Snowflake,
 } from 'lucide-react';
 import { UserSettings, ThemeMode, TabConfig, WidgetConfig, WidgetSize } from '../types/index.ts';
 
@@ -113,43 +115,105 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   return (
     <div className="space-y-4 max-w-lg mx-auto">
       {/* Profile */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200 space-y-3">
+      <div className="p-5 rounded-2xl bg-white border border-line space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-lg font-bold flex items-center justify-center">
             {settings.userName ? settings.userName.charAt(0).toUpperCase() : 'U'}
           </div>
           <div>
-            <p className="font-medium text-zinc-900">{settings.userName || 'Usuario'}</p>
-            <p className="text-sm text-zinc-500">{settings.userEmail || 'sin email'}</p>
+            <p className="font-medium text-main">{settings.userName || 'Usuario'}</p>
+            <p className="text-sm text-muted">{settings.userEmail || 'sin email'}</p>
           </div>
         </div>
       </div>
 
       {/* Appearance */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200 space-y-4">
-        <h3 className="font-bold text-zinc-900">Apariencia</h3>
+      <div className="p-5 rounded-2xl surface-card border-line space-y-4">
+        <h3 className="font-bold text-main">Apariencia</h3>
+
+        {/* Tema */}
         <div className="flex items-center justify-between">
-          <span className="text-sm text-zinc-600">Tema</span>
-          <button
-            type="button"
-            onClick={() => onUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-100 text-sm font-medium"
-          >
-            {settings.theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            {settings.theme === 'light' ? 'Claro' : 'Oscuro'}
-          </button>
+          <span className="text-sm text-muted">Tema</span>
+          <div className="flex gap-1.5">
+            {([
+              { v: 'light' as ThemeMode, label: 'Claro', Icon: Sun },
+              { v: 'dark' as ThemeMode, label: 'Oscuro', Icon: Moon },
+              { v: 'auto' as ThemeMode, label: 'Auto', Icon: Layers },
+            ]).map(({ v, label, Icon }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => onUpdateSettings({ theme: v })}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  settings.theme === v
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-zinc-100 text-muted hover-surface'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Temperatura de color */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-medium text-main">Temperatura de color</p>
+              <p className="text-xs text-muted">Reduce la fatiga visual</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { v: 'off' as const, label: 'Normal', Icon: Check },
+              { v: 'warm' as const, label: 'Calido', Icon: Flame },
+              { v: 'cool' as const, label: 'Frio', Icon: Snowflake },
+            ]).map(({ v, label, Icon }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() =>
+                  onUpdateSettings({
+                    colorTemperature: v,
+                    trueTone: v !== 'off' ? settings.trueTone : false,
+                  })
+                }
+                className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                  (settings.colorTemperature ?? 'off') === v
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-zinc-100 text-muted hover-surface'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-zinc-400 mt-2">
+            Reduce el brillo azul de la pantalla, similar al True Tone de Apple.
+          </p>
+        </div>
+
+        {/* True Tone automatico */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-900">True Tone</p>
-            <p className="text-xs text-zinc-500">Calidez ambiental inteligente</p>
+            <p className="text-sm font-medium text-main">True Tone suave</p>
+            <p className="text-xs text-muted">Calidez ambiental inteligente</p>
           </div>
           <button
             type="button"
-            onClick={() => onUpdateSettings({ trueTone: !settings.trueTone })}
+            onClick={() =>
+              onUpdateSettings({
+                trueTone: !settings.trueTone,
+                colorTemperature: !settings.trueTone ? 'warm' : 'off',
+              })
+            }
             className={`w-12 h-7 rounded-full transition-colors relative ${
               settings.trueTone ? 'bg-amber-500' : 'bg-zinc-300'
             }`}
+            aria-label="Activar True Tone suave"
           >
             <span
               className={`absolute top-0.5 w-6 h-6 rounded-full bg-white transition-transform ${
@@ -160,8 +224,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-900">Notificaciones Push</p>
-            <p className="text-xs text-zinc-500">Alertas en tiempo real</p>
+            <p className="text-sm font-medium text-main">Notificaciones Push</p>
+            <p className="text-xs text-muted">Alertas en tiempo real</p>
           </div>
           <button
             type="button"
@@ -197,7 +261,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Tabs container collapsible */}
-      <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+      <div className="rounded-2xl bg-white border border-line overflow-hidden">
         <button
           type="button"
           onClick={() => setOpenTabs(!openTabs)}
@@ -205,16 +269,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         >
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-blue-500" />
-            <h3 className="font-bold text-zinc-900">Organizar Pestañas</h3>
+            <h3 className="font-bold text-main">Organizar Pestañas</h3>
           </div>
           <span className="text-xs text-zinc-400">{openTabs ? '▲' : '▼'}</span>
         </button>
         {openTabs && (
           <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
-            <p className="text-xs text-zinc-500 pt-3">
+            <p className="text-xs text-muted pt-3">
               Desliza para reordenar. Toggle para activar.
             </p>
-            <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
+            <div className="divide-y divide-zinc-100 rounded-xl border border-line overflow-hidden">
               {sortedTabs.map((tab) => (
                 <div
                   key={tab.id}
@@ -237,7 +301,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     >
                       {tab.enabled && <Check className="w-3.5 h-3.5" />}
                     </button>
-                    <span className={tab.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
+                    <span className={tab.enabled ? 'text-main' : 'text-zinc-400 line-through'}>
                       {tab.name}
                     </span>
                     {tab.isCustom && (
@@ -265,7 +329,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 placeholder="Nombre de nueva pestaña"
                 value={newTabName}
                 onChange={(e) => setNewTabName(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-sm"
+                className="flex-1 px-3 py-2 rounded-xl bg-zinc-100 border border-line text-sm"
               />
               <button
                 type="submit"
@@ -279,7 +343,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       {/* Widgets container collapsible */}
-      <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+      <div className="rounded-2xl bg-white border border-line overflow-hidden">
         <button
           type="button"
           onClick={() => setOpenWidgets(!openWidgets)}
@@ -287,16 +351,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         >
           <div className="flex items-center gap-2">
             <Grid className="w-5 h-5 text-indigo-500" />
-            <h3 className="font-bold text-zinc-900">Widgets del Tablero</h3>
+            <h3 className="font-bold text-main">Widgets del Tablero</h3>
           </div>
           <span className="text-xs text-zinc-400">{openWidgets ? '▲' : '▼'}</span>
         </button>
         {openWidgets && (
           <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
-            <p className="text-xs text-zinc-500 pt-3">
+            <p className="text-xs text-muted pt-3">
               Desliza para reordenar. Toggle para activar.
             </p>
-            <div className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 overflow-hidden">
+            <div className="divide-y divide-zinc-100 rounded-xl border border-line overflow-hidden">
               {sortedWidgets.map((w) => (
                 <div
                   key={w.id}
@@ -319,14 +383,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     >
                       {w.enabled && <Check className="w-3.5 h-3.5" />}
                     </button>
-                    <span className={w.enabled ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
+                    <span className={w.enabled ? 'text-main' : 'text-zinc-400 line-through'}>
                       {w.title}
                     </span>
                   </div>
                   <select
                     value={w.size}
                     onChange={(e) => changeWidgetSize(w.id, e.target.value as WidgetSize)}
-                    className="text-xs px-2 py-1 rounded bg-zinc-100 border border-zinc-200"
+                    className="text-xs px-2 py-1 rounded bg-zinc-100 border border-line"
                   >
                     <option value="small">S</option>
                     <option value="medium">M</option>
@@ -343,7 +407,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <button
         type="button"
         onClick={onLogout}
-        className="w-full p-4 rounded-2xl bg-white border border-zinc-200 text-rose-600 font-medium text-sm flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors"
+        className="w-full p-4 rounded-2xl bg-white border border-line text-rose-600 font-medium text-sm flex items-center justify-center gap-2 hover:bg-rose-50 transition-colors"
       >
         <LogOut className="w-4 h-4" />
         Cerrar sesión

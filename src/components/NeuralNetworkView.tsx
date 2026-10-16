@@ -364,13 +364,13 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  <Network className="w-5 h-5" />
  </div>
  <div>
- <h2 className="text-base font-bold text-zinc-900100 flex items-center gap-2">
+ <h2 className="text-base font-bold text-main flex items-center gap-2">
  Red Neuronal Financiera
- <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600400 border border-emerald-500/20">
+ <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
  Sinapsis Activa
  </span>
  </h2>
- <p className="text-xs text-zinc-500400">
+ <p className="text-xs text-muted">
  Correlación sináptica entre compras, rutas de transporte, medicina y alertas bancarias.
  </p>
  </div>
@@ -384,7 +384,7 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
  selectedCategoryFilter === 'all'
  ? 'bg-blue-600 text-white shadow-md'
- : 'bg-zinc-100800 text-zinc-600400 hover:bg-zinc-200:bg-zinc-700'
+ : 'surface-input text-muted hover:bg-zinc-200:bg-zinc-700'
  }`}
  >
  Todas ({transactions.length})
@@ -396,8 +396,8 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  onClick={() => setSelectedCategoryFilter(cat.id)}
  className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
  selectedCategoryFilter === cat.id
- ? 'bg-zinc-900 text-white100900 shadow-md'
- : 'bg-zinc-100800 text-zinc-600400 hover:bg-zinc-200:bg-zinc-700'
+ ? 'bg-zinc-900 text-main shadow-md'
+ : 'surface-input text-muted hover:bg-zinc-200:bg-zinc-700'
  }`}
  >
  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
@@ -410,7 +410,7 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  title={synapsePulse ? 'Pausar impulsos' : 'Activar impulsos sinápticos'}
  aria-label="Toggle Impulsos"
  className={`p-1.5 rounded-full ${
- synapsePulse ? 'bg-amber-500/20 text-amber-500' : 'bg-zinc-100800 text-zinc-400'
+ synapsePulse ? 'bg-amber-500/20 text-amber-500' : 'surface-input text-zinc-400'
  }`}
  >
  <Zap className="w-4 h-4" />
@@ -419,7 +419,7 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  </div>
 
  {/* Main Graph Canvas & Inspection Panel */}
- <div className="relative rounded-3xl ios-glass-card overflow-hidden p-2 min-h-[520px] flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100950900">
+ <div className="relative rounded-3xl ios-glass-card overflow-hidden p-2 min-h-[520px] flex flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100">
  <canvas
  ref={canvasRef}
  width={800}
@@ -439,7 +439,7 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  {/* Node Inspection Floating Drawer / Card */}
  {selectedNode && (
  <div
- className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 rounded-2xl p-4 bg-white/95900/95 border border-zinc-200800 shadow-2xl backdrop-blur-xl z-20 animate-in fade-in slide-in-from-bottom-3 duration-200"
+ className="absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 rounded-2xl p-4 surface-card border border-line shadow-2xl backdrop-blur-xl z-20 animate-in fade-in slide-in-from-bottom-3 duration-200"
  >
  <div className="flex items-start justify-between gap-2 mb-2">
  <div className="flex items-center gap-2">
@@ -451,29 +451,29 @@ export const NeuralNetworkView: React.FC<NeuralNetworkViewProps> = ({
  <button
  type="button"
  onClick={() => setSelectedNode(null)}
- className="text-zinc-400 hover:text-zinc-600:text-zinc-200 text-xs px-2 py-0.5 rounded-full hover:bg-zinc-100:bg-zinc-800"
+ className="text-zinc-400 hover:text-muted:text-zinc-200 text-xs px-2 py-0.5 rounded-full hover:bg-zinc-100:bg-zinc-800"
  >
  Cerrar
  </button>
  </div>
 
- <h3 className="text-base font-bold text-zinc-900100 mb-1">
+ <h3 className="text-base font-bold text-main mb-1">
  {selectedNode.label}
  </h3>
- <p className="text-xs text-zinc-600400 mb-3 leading-relaxed">
+ <p className="text-xs text-muted mb-3 leading-relaxed">
  {selectedNode.details}
  </p>
 
- <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100800">
- <div className="p-2 rounded-xl bg-zinc-50800/60">
+ <div className="grid grid-cols-2 gap-2 pt-2 border-t border-line">
+ <div className="p-2 rounded-xl surface-input">
  <span className="text-[10px] text-zinc-400 block font-medium">Volumen Transaccionado</span>
- <span className="text-sm font-bold text-zinc-900100 font-mono">
+ <span className="text-sm font-bold text-main font-mono">
  {currencySymbol}{selectedNode.amount.toFixed(2)}
  </span>
  </div>
- <div className="p-2 rounded-xl bg-zinc-50800/60">
+ <div className="p-2 rounded-xl surface-input">
  <span className="text-[10px] text-zinc-400 block font-medium">Conexiones Activas</span>
- <span className="text-sm font-bold text-blue-600400">
+ <span className="text-sm font-bold text-blue-600">
  {selectedNode.count} enlaces
  </span>
  </div>

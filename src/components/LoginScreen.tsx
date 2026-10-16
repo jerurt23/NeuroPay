@@ -78,12 +78,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">
             N
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900">NEUROPAY</h1>
-          <p className="text-sm text-zinc-500 mt-1">by Urteagaholding</p>
+          <h1 className="text-2xl font-bold text-main">NEUROPAY</h1>
+          <p className="text-sm text-muted mt-1">by Urteagaholding</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-zinc-200 p-6 space-y-4">
-          <h2 className="text-lg font-bold text-zinc-900">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-line p-6 space-y-4">
+          <h2 className="text-lg font-bold text-main">
             {isRegister ? 'Crear cuenta' : 'Iniciar sesion'}
           </h2>
 
@@ -101,37 +101,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
           {isRegister && (
             <div>
-              <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre</label>
+              <label className="block text-xs font-medium text-muted mb-1">Nombre</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Tu nombre completo"
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Email</label>
+            <label className="block text-xs font-medium text-muted mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Contrasena</label>
+            <label className="block text-xs font-medium text-muted mb-1">Contrasena</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="........"
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               required
               minLength={6}
             />
@@ -158,7 +158,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        <p className="text-center text-sm text-zinc-500 mt-4">
+        <p className="text-center text-sm text-muted mt-4">
           {isRegister ? 'Ya tienes cuenta?' : 'No tienes cuenta?'}{' '}
           <button
             type="button"

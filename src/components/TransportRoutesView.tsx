@@ -78,13 +78,13 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  {/* Overview Cards */}
  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
  <div className="p-4 rounded-3xl ios-glass-card">
- <div className="flex items-center justify-between text-zinc-500400 mb-1">
+ <div className="flex items-center justify-between text-muted mb-1">
  <span className="text-xs font-medium">Gasto Total en Rutas</span>
  <div className="p-1.5 rounded-full bg-blue-500/10 text-blue-500">
  <Navigation className="w-4 h-4" />
  </div>
  </div>
- <div className="text-2xl font-bold font-mono text-zinc-900100">
+ <div className="text-2xl font-bold font-mono text-main">
  {currencySymbol}{totalSpentTransport.toFixed(2)}
  </div>
  <span className="text-[11px] text-zinc-400">
@@ -93,28 +93,28 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  </div>
 
  <div className="p-4 rounded-3xl ios-glass-card">
- <div className="flex items-center justify-between text-zinc-500400 mb-1">
+ <div className="flex items-center justify-between text-muted mb-1">
  <span className="text-xs font-medium">Kilómetros Recorridos</span>
  <div className="p-1.5 rounded-full bg-indigo-500/10 text-indigo-500">
  <Compass className="w-4 h-4" />
  </div>
  </div>
- <div className="text-2xl font-bold font-mono text-zinc-900100">
+ <div className="text-2xl font-bold font-mono text-main">
  {totalKm.toFixed(1)} km
  </div>
- <span className="text-[11px] text-emerald-600400 font-medium">
+ <span className="text-[11px] text-emerald-600 font-medium">
  Rutas de punto A hacia punto B
  </span>
  </div>
 
  <div className="p-4 rounded-3xl ios-glass-card">
- <div className="flex items-center justify-between text-zinc-500400 mb-1">
+ <div className="flex items-center justify-between text-muted mb-1">
  <span className="text-xs font-medium">Costo Promedio / km</span>
  <div className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-500">
  <TrendingUp className="w-4 h-4" />
  </div>
  </div>
- <div className="text-2xl font-bold font-mono text-zinc-900100">
+ <div className="text-2xl font-bold font-mono text-main">
  {currencySymbol}{avgCostPerKm.toFixed(2)} / km
  </div>
  <span className="text-[11px] text-zinc-400">
@@ -126,10 +126,10 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  {/* Action Header */}
  <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-3xl ios-glass-card">
  <div>
- <h2 className="text-base font-bold text-zinc-900100 flex items-center gap-2">
+ <h2 className="text-base font-bold text-main flex items-center gap-2">
  Rutas Frecuentes y Repetición de Viajes
  </h2>
- <p className="text-xs text-zinc-500400">
+ <p className="text-xs text-muted">
  Registra trayectos recurrentes con un solo toque y calcula el costo exacto por destino.
  </p>
  </div>
@@ -155,17 +155,17 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  className="p-4 rounded-2xl ios-glass-card border border-black/5 flex items-center justify-between gap-3 hover:-translate-y-0.5 transition-transform"
  >
  <div className="flex items-center gap-3 min-w-0">
- <div className="w-10 h-10 rounded-2xl bg-zinc-100800 flex items-center justify-center flex-shrink-0">
+ <div className="w-10 h-10 rounded-2xl surface-input flex items-center justify-center flex-shrink-0">
  {MODE_ICON[route.mode] || <Car className="w-4 h-4 text-blue-500" />}
  </div>
  <div className="min-w-0">
- <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900100 truncate">
+ <div className="flex items-center gap-1.5 text-xs font-bold text-main truncate">
  <span>{route.origin.split(',')[0]}</span>
  <ArrowRight className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
  <span>{route.destination.split(',')[0]}</span>
  </div>
- <div className="flex items-center gap-2 text-[11px] text-zinc-500400 mt-0.5">
- <span className="font-medium text-blue-600400 font-mono">
+ <div className="flex items-center gap-2 text-[11px] text-muted mt-0.5">
+ <span className="font-medium text-blue-600 font-mono">
  {currencySymbol}{(route.totalCost / route.count).toFixed(2)} por viaje
  </span>
  <span>•</span>
@@ -178,7 +178,7 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  type="button"
  onClick={() => onRepeatTrip(route.lastTx)}
  title="Repetir viaje y registrar costo hoy"
- className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600400 text-xs font-semibold flex items-center gap-1 transition-colors flex-shrink-0"
+ className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 text-xs font-semibold flex items-center gap-1 transition-colors flex-shrink-0"
  >
  <Repeat className="w-3.5 h-3.5" />
  <span>Repetir</span>
@@ -190,10 +190,10 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
 
  {/* Complete Historical Transport Log */}
  <div className="p-4 sm:p-5 rounded-3xl ios-glass-card space-y-3">
- <h3 className="text-sm font-bold text-zinc-900100">
+ <h3 className="text-sm font-bold text-main">
  Historial Cronológico de Movilidad
  </h3>
- <div className="divide-y divide-zinc-100800">
+ <div className="divide-y divide-line">
  {transportTxs.map((t) => (
  <div key={t.id} className="py-3 flex items-center justify-between gap-3">
  <div className="flex items-center gap-3 min-w-0">
@@ -201,12 +201,12 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  {t.transportDetails && MODE_ICON[t.transportDetails.transportMode]}
  </div>
  <div className="min-w-0">
- <h4 className="text-xs sm:text-sm font-semibold text-zinc-900100 truncate flex items-center">
+ <h4 className="text-xs sm:text-sm font-semibold text-main truncate flex items-center">
  <span>{t.transportDetails?.origin}</span>
  <ArrowRight className="w-3.5 h-3.5 text-blue-500 mx-1.5 flex-shrink-0 inline" />
  <span>{t.transportDetails?.destination}</span>
  </h4>
- <div className="flex items-center gap-2 text-[11px] text-zinc-500400">
+ <div className="flex items-center gap-2 text-[11px] text-muted">
  <span>{t.date}</span>
  <span>•</span>
  <span className="capitalize">{t.transportDetails?.transportMode.replace('_', ' ')}</span>
@@ -221,11 +221,11 @@ export const TransportRoutesView: React.FC<TransportRoutesViewProps> = ({
  </div>
 
  <div className="text-right flex-shrink-0">
- <span className="text-sm font-bold font-mono text-zinc-900100">
+ <span className="text-sm font-bold font-mono text-main">
  {currencySymbol}{t.amount.toFixed(2)}
  </span>
  {t.transportDetails?.returnTrip && (
- <span className="block text-[10px] text-blue-600400 font-medium">
+ <span className="block text-[10px] text-blue-600 font-medium">
  Ida y vuelta
  </span>
  )}
