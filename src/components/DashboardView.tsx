@@ -113,11 +113,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Chart */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200">
+      <div className="p-5 rounded-2xl bg-white border border-line">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h3 className="font-bold text-zinc-900">Ingresos vs Egresos</h3>
+            <h3 className="font-bold text-main">Ingresos vs Egresos</h3>
           </div>
           <div className="flex gap-1 bg-zinc-100 rounded-lg p-0.5">
             {(['day', 'week', 'month', 'year'] as PeriodFilter[]).map((period) => (
@@ -128,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                   periodFilter === period
                     ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-700'
+                    : 'text-muted hover:text-muted'
                 }`}
               >
                 {period === 'day' ? 'Día' : period === 'week' ? 'Semana' : period === 'month' ? 'Mes' : 'Año'}
@@ -167,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="space-y-3">
             {chartData.map((item, idx) => (
               <div key={idx} className="flex items-center gap-3">
-                <span className="text-xs text-zinc-500 w-12 flex-shrink-0">{item.label}</span>
+                <span className="text-xs text-muted w-12 flex-shrink-0">{item.label}</span>
                 <div className="flex-1 flex items-center gap-1 h-6">
                   <div
                     className="h-full bg-emerald-400 rounded-l transition-all duration-300"
@@ -189,19 +189,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-zinc-100">
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-emerald-400" />
-            <span className="text-xs text-zinc-500">Ingresos</span>
+            <span className="text-xs text-muted">Ingresos</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded-sm bg-rose-400" />
-            <span className="text-xs text-zinc-500">Egresos</span>
+            <span className="text-xs text-muted">Egresos</span>
           </div>
         </div>
       </div>
 
       {/* Recent Transactions */}
-      <div className="p-5 rounded-2xl bg-white border border-zinc-200">
+      <div className="p-5 rounded-2xl bg-white border border-line">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-zinc-900">Últimos Movimientos</h3>
+          <h3 className="font-bold text-main">Últimos Movimientos</h3>
           <button
             type="button"
             onClick={onOpenNewTransaction}
@@ -223,11 +223,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {tx.title.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-900 truncate">{tx.title}</p>
-                    <p className="text-xs text-zinc-500">{tx.date}</p>
+                    <p className="text-sm font-medium text-main truncate">{tx.title}</p>
+                    <p className="text-xs text-muted">{tx.date}</p>
                   </div>
                 </div>
-                <span className={`text-sm font-bold ${tx.type === 'expense' ? 'text-zinc-900' : 'text-emerald-600'}`}>
+                <span className={`text-sm font-bold ${tx.type === 'expense' ? 'text-main' : 'text-emerald-600'}`}>
                   {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{tx.amount.toFixed(2)}
                 </span>
               </div>

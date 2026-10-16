@@ -37,7 +37,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       aria-label="Navegación principal"
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md"
     >
-      <div className="relative flex items-center justify-around px-2 py-1.5 rounded-[28px] bg-white/70 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.10)] backdrop-blur-xl">
+      <div className="ios-glass-card relative flex items-center justify-around px-2 py-1.5 rounded-[28px]">
         {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const icon = ICON_MAP[tab.icon] || <LayoutGrid className="w-5 h-5" />;

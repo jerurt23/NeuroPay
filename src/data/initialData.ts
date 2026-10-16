@@ -138,6 +138,7 @@ export const INITIAL_SETTINGS: UserSettings = {
   chartType: 'bar',
   countryCode: 'PE',
   trueTone: false,
+  colorTemperature: 'off',
   e2eeEnabled: false,
   pushNotifications: false,
   biometricUnlock: false,

@@ -4,6 +4,34 @@
   :root {
     --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
     --truetone-filter: none;
+    --app-bg: #f8f9fa;
+    --app-fg: #1a1a1a;
+  }
+
+  /* ---------- Clases semanticas: modo claro (default) ---------- */
+  .surface-card {
+    background-color: #ffffff;
+  }
+
+  .surface-page {
+    background-color: #f8f9fa;
+  }
+
+  .text-main {
+    color: #18181b;
+  }
+
+  .text-muted {
+    color: #52525b;
+  }
+
+  .surface-input {
+    background-color: #ffffff;
+  }
+
+  .border-line,
+  .divide-line {
+    border-color: #e4e4e7;
   }
 
   body {
@@ -12,9 +40,77 @@
     -moz-osx-font-smoothing: grayscale;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    background-color: #f8f9fa;
-    color: #1a1a1a;
+    background-color: var(--app-bg);
+    color: var(--app-fg);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
+
+  /* ---------- Modo oscuro (controlado por App.tsx) ---------- */
+  html.dark body {
+    background-color: #0a0a0b;
+    color: #f4f4f5;
+  }
+
+  /* Superficies (tarjetas y listas) en modo oscuro */
+  html.dark .surface-card {
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+  }
+
+  html.dark .surface-page {
+    background-color: #0a0a0b !important;
+  }
+
+  /* Texto principal y secundario */
+  html.dark .text-main {
+    color: #f4f4f5 !important;
+  }
+
+  html.dark .text-muted {
+    color: #a1a1aa !important;
+  }
+
+  /* Campos de formulario */
+  html.dark .surface-input {
+    background-color: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+  }
+
+  /* Cristales (header, modales) */
+  html.dark .ios-glass,
+  html.dark .ios-glass-card {
+    background: rgba(24, 24, 27, 0.82);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  html.dark .ios-glass-card {
+    background: rgba(24, 24, 27, 0.92);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6), 0 2px 6px -1px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Bordes y separadores */
+  html.dark .border-line,
+  html.dark .divide-line {
+    border-color: #27272a !important;
+  }
+
+  /* Zonas hover */
+  html.dark .hover-surface:hover {
+    background-color: #27272a !important;
+  }
+}
+
+/* ---------- Filtro True Tone (temperatura de color) ---------- */
+/* Evita que los filtros se apliquen dos veces si se anidan */
+.true-tone-layer {
+  filter: var(--truetone-filter);
+  transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.true-tone-active {
+  filter: sepia(0.09) saturate(1.08) hue-rotate(-3deg) brightness(0.99);
+  transition: filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .true-tone-active {

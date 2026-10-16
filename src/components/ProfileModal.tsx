@@ -119,8 +119,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-900">Perfil de Usuario</h2>
-          <button onClick={onClose} className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-600">
+          <h2 className="text-lg font-bold text-main">Perfil de Usuario</h2>
+          <button onClick={onClose} className="p-1.5 rounded-full text-zinc-400 hover:text-muted">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -142,17 +142,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </span>
                 <input type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
               </label>
-              <span className="text-xs text-zinc-500">Toca para cambiar foto</span>
+              <span className="text-xs text-muted">Toca para cambiar foto</span>
             </div>
 
             <form onSubmit={saveBasic} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre</label>
+                <label className="block text-xs font-medium text-muted mb-1">Nombre</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
                 />
               </div>
               <button
@@ -168,10 +168,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         {/* Settings container */}
         <div className="pt-3 border-t border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase mb-2">Configuración</p>
+          <p className="text-xs font-semibold text-muted uppercase mb-2">Configuración</p>
 
           {/* Graficos */}
-          <div className="rounded-xl border border-zinc-200 overflow-hidden">
+          <div className="rounded-xl border border-line overflow-hidden">
             <button
               type="button"
               onClick={() => toggleSection('chart')}
@@ -179,7 +179,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             >
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium text-zinc-900">Gráficos</span>
+                <span className="text-sm font-medium text-main">Gráficos</span>
               </div>
               {openSections.has('chart') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
             </button>
@@ -191,7 +191,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
                     (settings.chartType || 'bar') === 'bar'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-100 text-zinc-600'
+                      : 'bg-zinc-100 text-muted'
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" /> Barras
@@ -202,7 +202,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   className={`flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${
                     settings.chartType === 'line'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-100 text-zinc-600'
+                      : 'bg-zinc-100 text-muted'
                   }`}
                 >
                   <LineChart className="w-4 h-4" /> Líneas
@@ -212,7 +212,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Moneda */}
-          <div className="rounded-xl border border-zinc-200 overflow-hidden mt-2">
+          <div className="rounded-xl border border-line overflow-hidden mt-2">
             <button
               type="button"
               onClick={() => toggleSection('currency')}
@@ -220,7 +220,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Coins className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm font-medium text-zinc-900">Tipo de Moneda</span>
+                <span className="text-sm font-medium text-main">Tipo de Moneda</span>
               </div>
               {openSections.has('currency') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
             </button>
@@ -234,7 +234,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm ${
                       settings.countryCode === c.code
                         ? 'bg-emerald-50 text-emerald-700 font-medium'
-                        : 'bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
+                        : 'bg-zinc-50 text-muted hover:bg-zinc-100'
                     }`}
                   >
                     <span>{c.name}</span>
@@ -246,7 +246,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Cuenta */}
-          <div className="rounded-xl border border-zinc-200 overflow-hidden mt-2">
+          <div className="rounded-xl border border-line overflow-hidden mt-2">
             <button
               type="button"
               onClick={() => toggleSection('account')}
@@ -254,60 +254,60 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             >
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-medium text-zinc-900">Cuenta</span>
+                <span className="text-sm font-medium text-main">Cuenta</span>
               </div>
               {openSections.has('account') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
             </button>
             {openSections.has('account') && (
               <div className="px-3 pb-3 border-t border-zinc-100 pt-3 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Nombre de usuario</label>
+                  <label className="block text-xs font-medium text-muted mb-1">Nombre de usuario</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Correo</label>
+                  <label className="block text-xs font-medium text-muted mb-1">Correo</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => { onUpdateSettings({ userName: name, userEmail: email }); }}
-                  className="w-full py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-sm font-medium"
+                  className="w-full py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-muted text-sm font-medium"
                 >
                   Guardar datos de cuenta
                 </button>
 
                 <div className="pt-2 border-t border-zinc-100 space-y-2">
-                  <p className="text-xs font-medium text-zinc-600">Cambiar contraseña</p>
+                  <p className="text-xs font-medium text-muted">Cambiar contraseña</p>
                   <input
                     type="password"
                     placeholder="Contraseña actual"
                     value={oldPass}
                     onChange={(e) => setOldPass(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                   <input
                     type="password"
                     placeholder="Nueva contraseña"
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                   <input
                     type="password"
                     placeholder="Confirmar"
                     value={confirmPass}
                     onChange={(e) => setConfirmPass(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                   {passError && <p className="text-xs text-rose-500">{passError}</p>}
                   {passMsg && <p className="text-xs text-emerald-600">{passMsg}</p>}
@@ -324,7 +324,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
 
           {/* Temas */}
-          <div className="rounded-xl border border-zinc-200 overflow-hidden mt-2">
+          <div className="rounded-xl border border-line overflow-hidden mt-2">
             <button
               type="button"
               onClick={() => toggleSection('theme')}
@@ -332,7 +332,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Moon className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-medium text-zinc-900">Temas</span>
+                <span className="text-sm font-medium text-main">Temas</span>
               </div>
               {openSections.has('theme') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
             </button>
@@ -342,7 +342,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   type="button"
                   onClick={() => onUpdateSettings({ theme: 'light' })}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'light' ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-zinc-600'
+                    settings.theme === 'light' ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-muted'
                   }`}
                 >
                   Claro
@@ -351,7 +351,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   type="button"
                   onClick={() => onUpdateSettings({ theme: 'dark' })}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'dark' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-zinc-600'
+                    settings.theme === 'dark' ? 'bg-zinc-800 text-white' : 'bg-zinc-100 text-muted'
                   }`}
                 >
                   Oscuro
@@ -360,7 +360,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   type="button"
                   onClick={() => onUpdateSettings({ theme: 'auto' })}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-                    settings.theme === 'auto' ? 'bg-indigo-600 text-white' : 'bg-zinc-100 text-zinc-600'
+                    settings.theme === 'auto' ? 'bg-indigo-600 text-white' : 'bg-zinc-100 text-muted'
                   }`}
                 >
                   Auto
@@ -370,21 +370,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white border border-zinc-200 overflow-hidden">
+        <div className="rounded-2xl bg-white border border-line overflow-hidden">
           <button
             type="button"
             onClick={() => setOpenCatEdit((v) => !v)}
             className="w-full flex items-center justify-between p-5 text-left"
           >
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-zinc-500" />
-              <h3 className="font-bold text-zinc-900">Edicion de Categorias</h3>
+              <BarChart3 className="w-5 h-5 text-muted" />
+              <h3 className="font-bold text-main">Edicion de Categorias</h3>
             </div>
             <span className="text-xs text-zinc-400">{openCatEdit ? '^' : 'v'}</span>
           </button>
           {openCatEdit && (
             <div className="px-5 pb-5 space-y-3 border-t border-zinc-100">
-              <p className="text-xs text-zinc-500 pt-3">
+              <p className="text-xs text-muted pt-3">
                 Verifica enlaces, deriva datos a otra categoria y elimina.
               </p>
               {(settings.customCategories || []).length === 0 && (
@@ -395,11 +395,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 const linkedDashboard = settings.dashboardGroups?.[cat.name];
                 const target = deriveTargets[cat.id] || categories[0]?.id || 'comida';
                 return (
-                  <div key={cat.id} className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
+                  <div key={cat.id} className="p-3 rounded-xl bg-zinc-50 border border-line space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-zinc-900">{cat.name}</p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-sm font-medium text-main">{cat.name}</p>
+                        <p className="text-xs text-muted">
                           {linkedTransactions.length} registro(s)
                           {linkedDashboard ? ' · Vinculada a dashboard' : ''}
                         </p>
@@ -417,11 +417,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       </button>
                     </div>
                     <div>
-                      <label className="text-xs text-zinc-500 block mb-1">Derivar datos a:</label>
+                      <label className="text-xs text-muted block mb-1">Derivar datos a:</label>
                       <select
                         value={target}
                         onChange={(e) => setDeriveTargets((prev) => ({ ...prev, [cat.id]: e.target.value }))}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-sm"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-sm"
                       >
                         {categories.map((c) => (
                           <option key={c.id} value={c.id}>{c.name}</option>

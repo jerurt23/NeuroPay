@@ -127,12 +127,16 @@ export interface TabConfig {
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type ViewportMode = 'native' | 'iphone' | 'ipad' | 'macbook';
 
+/** Ajuste de temperatura de color, similar a True Tone de Apple. */
+export type ColorTemperature = 'off' | 'warm' | 'cool';
+
 export interface UserSettings {
   userName: string;
   userEmail: string;
   currencySymbol: string;
   theme: ThemeMode;
   trueTone: boolean;
+  colorTemperature?: ColorTemperature;
   e2eeEnabled: boolean;
   pushNotifications: boolean;
   biometricUnlock: boolean;

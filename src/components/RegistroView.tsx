@@ -354,14 +354,14 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     if (pendingItems.length === 0) return null;
     return (
       <div className="space-y-2">
-        <label className="text-xs font-medium text-zinc-600 mb-1 block">
+        <label className="text-xs font-medium text-muted mb-1 block">
           Registros acumulados ({pendingItems.length})
         </label>
         {pendingItems.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-zinc-200">
+          <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white border border-line">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-zinc-900 truncate">{item.itemName}</p>
-              <p className="text-xs text-zinc-500">
+              <p className="text-sm font-medium text-main truncate">{item.itemName}</p>
+              <p className="text-xs text-muted">
                 {item.quantity} {item.unit} · {currencySymbol}{item.amount.toFixed(2)}
                 {item.txType === 'income' && <span className="ml-1 text-emerald-600">(ingreso)</span>}
               </p>
@@ -382,8 +382,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   if (!mainCategory) {
     return (
       <div className="space-y-4 max-w-lg mx-auto">
-        <h2 className="text-xl font-bold text-zinc-900">Nuevo Registro</h2>
-        <p className="text-sm text-zinc-500">Selecciona una categoría</p>
+        <h2 className="text-xl font-bold text-main">Nuevo Registro</h2>
+        <p className="text-sm text-muted">Selecciona una categoría</p>
         <div className="flex flex-col gap-3">
           {[
             { id: 'comida' as MainCategory, label: 'Comida', emoji: '🍎' },
@@ -401,10 +401,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               key={cat.id}
               type="button"
               onClick={() => setMainCategory(cat.id)}
-              className="p-5 rounded-2xl bg-white border border-zinc-200 hover:border-blue-400 hover:shadow-md transition-all text-center"
+              className="p-5 rounded-2xl bg-white border border-line hover:border-blue-400 hover:shadow-md transition-all text-center"
             >
               <span className="text-2xl block mb-1">{cat.emoji}</span>
-              <span className="font-medium text-zinc-900 text-sm">{cat.label}</span>
+              <span className="font-medium text-main text-sm">{cat.label}</span>
             </button>
           ))}
         </div>
@@ -425,10 +425,10 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <div className="mx-auto w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl flex items-center justify-center animate-pulse">
             <span className="text-white text-3xl font-bold">+</span>
           </div>
-          <p className="text-3xl font-extrabold text-zinc-900">
+          <p className="text-3xl font-extrabold text-main">
             {animationStep === 'create' ? 'Se creo una nueva categoria' : animationStep === 'save' ? 'Se registro correctamente tus datos' : 'Procesando...'}
           </p>
-          <p className="text-sm text-zinc-500">{dashboardMessage}</p>
+          <p className="text-sm text-muted">{dashboardMessage}</p>
         </div>
       </div>
     );
@@ -437,40 +437,40 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 backdrop-blur-2xl">
         <div className="w-full max-w-md bg-white/90 rounded-3xl p-6 border border-white/60 shadow-2xl space-y-4 backdrop-blur-xl">
-          <h2 className="text-lg font-bold text-zinc-900">Editar Registro</h2>
+          <h2 className="text-lg font-bold text-main">Editar Registro</h2>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Titulo</label>
+            <label className="block text-xs font-medium text-muted mb-1">Titulo</label>
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Monto</label>
+            <label className="block text-xs font-medium text-muted mb-1">Monto</label>
             <input
               type="number"
               step="0.01"
               value={editAmount}
               onChange={(e) => setEditAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-600 mb-1">Fecha</label>
+            <label className="block text-xs font-medium text-muted mb-1">Fecha</label>
             <input
               type="date"
               value={editDate}
               onChange={(e) => setEditDate(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+              className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
             />
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setEditingTx(null)}
-              className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-zinc-700 text-sm font-medium"
+              className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-muted text-sm font-medium"
             >
               Cancelar
             </button>
@@ -503,11 +503,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         <button
           type="button"
           onClick={() => { setMainCategory(null); setPendingItems([]); }}
-          className="text-sm text-zinc-500 hover:text-zinc-700"
+          className="text-sm text-muted hover:text-muted"
         >
           ← Volver
         </button>
-        <h2 className="text-lg font-bold text-zinc-900">
+        <h2 className="text-lg font-bold text-main">
           {mainCategory === 'comida' && 'Registrar Comida'}
           {mainCategory === 'transporte' && 'Registrar Transporte'}
           {mainCategory === 'medicina' && 'Registrar Medicina'}
@@ -520,7 +520,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {mainCategory === 'comida' && (
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-2 block">Tipo</label>
+            <label className="text-xs font-medium text-muted mb-2 block">Tipo</label>
             <div className="flex flex-wrap gap-2">
               {[
                 { id: 'proteina', label: 'Proteína' },
@@ -537,7 +537,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     foodSubcategory === sub.id
                       ? 'bg-blue-600 text-white'
-                      : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                      : 'bg-zinc-100 text-muted hover:bg-zinc-200'
                   }`}
                 >
                   {sub.label}
@@ -549,7 +549,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           {foodSubcategory && (
             <>
               <div>
-                <label className="text-xs font-medium text-zinc-600 mb-2 block">Alimento</label>
+                <label className="text-xs font-medium text-muted mb-2 block">Alimento</label>
                 <div className="flex flex-col gap-2">
                   {(DEFAULT_FOOD_ITEMS[foodSubcategory] || []).map((item) => (
                     <button
@@ -559,7 +559,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                       className={`p-3 rounded-xl text-sm text-left transition-colors ${
                         selectedItem === item && !customItem
                           ? 'bg-blue-50 border-blue-500 border text-blue-700 font-medium'
-                          : 'bg-zinc-50 border border-zinc-200 text-zinc-700 hover:border-zinc-300'
+                          : 'bg-zinc-50 border border-line text-muted hover:border-zinc-300'
                       }`}
                     >
                       {item}
@@ -568,7 +568,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowNewItemInput(true)}
-                    className="p-3 rounded-xl text-sm text-left bg-zinc-50 border border-dashed border-zinc-300 text-zinc-500 flex items-center gap-1"
+                    className="p-3 rounded-xl text-sm text-left bg-zinc-50 border border-dashed border-zinc-300 text-muted flex items-center gap-1"
                   >
                     <Plus className="w-4 h-4" /> Nuevo
                   </button>
@@ -576,19 +576,19 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </div>
 
               {showNewItemInput && (
-                <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
+                <div className="p-3 rounded-xl bg-zinc-50 border border-line space-y-3">
                   <input
                     type="text"
                     placeholder="Nombre del nuevo alimento"
                     value={newItemName}
                     onChange={(e) => { setNewItemName(e.target.value); setCustomTitle(e.target.value); }}
-                    className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-2 rounded-lg bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
                   <div className="flex gap-2">
                     <select
                       value={newItemCategory}
                       onChange={(e) => setNewItemCategory(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-200 text-sm"
+                      className="flex-1 px-3 py-2 rounded-lg bg-white border border-line text-sm"
                     >
                       <option value="">Asignar a...</option>
                       <option value="proteina">Proteína</option>
@@ -610,7 +610,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               )}
 
               <div>
-                <label className="text-xs font-medium text-zinc-600 mb-1 block">Cantidad y Unidad</label>
+                <label className="text-xs font-medium text-muted mb-1 block">Cantidad y Unidad</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -618,9 +618,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     step="0.1"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   />
-                  <div className="flex gap-0.5 rounded-r-xl overflow-hidden border border-l-0 border-zinc-200">
+                  <div className="flex gap-0.5 rounded-r-xl overflow-hidden border border-l-0 border-line">
                     {(['unidades', 'kg', 'g'] as UnitType[]).map((u) => (
                       <button
                         key={u}
@@ -629,7 +629,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                         className={`px-3 py-2.5 text-xs font-medium transition-colors ${
                           unit === u
                             ? 'bg-blue-600 text-white'
-                            : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100'
+                            : 'bg-zinc-50 text-muted hover:bg-zinc-100'
                         }`}
                       >
                         {u === 'unidades' ? 'ud' : u}
@@ -640,14 +640,14 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio unitario ({currencySymbol})</label>
+                <label className="text-xs font-medium text-muted mb-1 block">Precio unitario ({currencySymbol})</label>
                 <input
                   type="number"
                   step="0.01"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 />
               </div>
 
@@ -658,9 +658,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     <span>Último registro</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-zinc-700">{lastHistory.date}</span>
+                    <span className="text-sm text-muted">{lastHistory.date}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
+                      <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                       {amount && (
                         <span className="text-sm font-bold text-blue-600">
                           {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -679,34 +679,34 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {mainCategory === 'transporte' && (
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Origen</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Origen</label>
             <input
               type="text"
               placeholder="Punto de partida"
               value={origin}
               onChange={(e) => setOrigin(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Destino</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Destino</label>
             <input
               type="text"
               placeholder="Punto de llegada"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio ({currencySymbol})</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Precio ({currencySymbol})</label>
             <input
               type="number"
               step="0.01"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           {lastHistory && origin && destination && (
@@ -716,9 +716,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 <span>Último viaje similar</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
+                <span className="text-sm text-muted">{lastHistory.date}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
+                  <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
                       {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -735,16 +735,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {mainCategory === 'medicina' && (
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Nombre</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Nombre</label>
             <input
               type="text"
               placeholder="Paracetamol, Ibuprofeno..."
               value={medicineName}
               onChange={(e) => setMedicineName(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
             {medicineName && filteredMedicines.length > 0 && (
-              <div className="mt-1 bg-white border border-zinc-200 rounded-xl overflow-hidden">
+              <div className="mt-1 bg-white border border-line rounded-xl overflow-hidden">
                 {filteredMedicines.slice(0, 5).map((med) => (
                   <button
                     key={med}
@@ -759,11 +759,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             )}
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Marca / Genérico</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Marca / Genérico</label>
             <select
               value={medicineBrand}
               onChange={(e) => setMedicineBrand(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
             >
               {MEDICINE_BRANDS.map((brand) => (
                 <option key={brand} value={brand}>{brand}</option>
@@ -771,14 +771,14 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Precio ({currencySymbol})</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Precio ({currencySymbol})</label>
             <input
               type="number"
               step="0.01"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           {lastHistory && (
@@ -788,9 +788,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 <span>Último registro</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
+                <span className="text-sm text-muted">{lastHistory.date}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
+                  <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
                       {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -807,24 +807,24 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {mainCategory === 'ingresos' && (
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Concepto</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Concepto</label>
             <input
               type="text"
               placeholder="Sueldo, honorarios, venta..."
               value={customTitle}
               onChange={(e) => setCustomTitle(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-zinc-600 mb-1 block">Monto ({currencySymbol})</label>
+            <label className="text-xs font-medium text-muted mb-1 block">Monto ({currencySymbol})</label>
             <input
               type="number"
               step="0.01"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
           </div>
           {lastHistory && customTitle && (
@@ -834,9 +834,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 <span>Último ingreso similar</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-700">{lastHistory.date}</span>
+                <span className="text-sm text-muted">{lastHistory.date}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-zinc-500 line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
+                  <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-emerald-600">
                       {currencySymbol}{parseFloat(amount).toFixed(2)}
@@ -852,20 +852,20 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {/* NUEVA CATEGORÍA */}
       {mainCategory === 'nueva' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
+          <div className="p-3 rounded-xl bg-zinc-50 border border-line space-y-3">
             <div>
-              <label className="text-xs font-medium text-zinc-600 mb-1 block">Nombre de nueva categoria de registro</label>
+              <label className="text-xs font-medium text-muted mb-1 block">Nombre de nueva categoria de registro</label>
               <input
                 type="text"
                 placeholder="Mi registro personalizado"
                 value={customTitle}
                 onChange={(e) => setCustomTitle(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
               />
             </div>
 
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-zinc-600">Incluir fecha de creacion?</label>
+              <label className="text-xs font-medium text-muted">Incluir fecha de creacion?</label>
               <button
                 type="button"
                 onClick={() => setIncludeDate(!includeDate)}
@@ -878,19 +878,19 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-zinc-600 mb-1 block">Agregar campo</label>
+              <label className="text-xs font-medium text-muted mb-1 block">Agregar campo</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Nombre del campo"
                   value={newFieldName}
                   onChange={(e) => setNewFieldName(e.target.value)}
-                  className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                  className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
                 />
                 <select
                   value={newFieldType}
                   onChange={(e) => setNewFieldType(e.target.value)}
-                  className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                  className="px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
                 >
                   <option value="char">char (texto)</option>
                   <option value="int">int (numero entero)</option>
@@ -900,12 +900,12 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </div>
               {customFieldDefs.some(f => f.type === 'boolean') && (
                 <div className="mt-2 space-y-1">
-                  <label className="text-xs text-zinc-500">Condicion opcional: mostrar este campo si...</label>
+                  <label className="text-xs text-muted">Condicion opcional: mostrar este campo si...</label>
                   <div className="flex gap-2">
                     <select
                       value={newFieldConditionField}
                       onChange={(e) => setNewFieldConditionField(e.target.value)}
-                      className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                      className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
                     >
                       <option value="">Sin condicion</option>
                       {customFieldDefs.filter(f => f.type === 'boolean').map(f => (
@@ -916,7 +916,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                       <select
                         value={String(newFieldConditionValue)}
                         onChange={(e) => setNewFieldConditionValue(e.target.value === 'true')}
-                        className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                        className="px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
                       >
                         <option value="true">es verdadero</option>
                         <option value="false">es falso</option>
@@ -949,9 +949,9 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
             {customFieldDefs.length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-zinc-600">Campos configurados:</p>
+                <p className="text-xs font-medium text-muted">Campos configurados:</p>
                 {customFieldDefs.map(f => (
-                  <div key={f.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-zinc-200 text-sm">
+                  <div key={f.id} className="flex items-center justify-between p-2 rounded-lg bg-white border border-line text-sm">
                     <span>{f.name} <span className="text-xs text-zinc-400">({f.type})</span>
                       {f.conditionField && (
                         <span className="text-xs text-amber-500 ml-1">
@@ -969,16 +969,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           </div>
 
           {customTitle.trim() && customFieldDefs.length > 0 && (
-            <div className="p-3 rounded-xl bg-white border border-zinc-200 space-y-3">
-              <p className="text-xs font-medium text-zinc-600">Registrar datos</p>
+            <div className="p-3 rounded-xl bg-white border border-line space-y-3">
+              <p className="text-xs font-medium text-muted">Registrar datos</p>
               {includeDate && (
                 <div>
-                  <label className="text-xs font-medium text-zinc-600 mb-1 block">Fecha de creacion</label>
+                  <label className="text-xs font-medium text-muted mb-1 block">Fecha de creacion</label>
                   <input
                     type="date"
                     value={customValues.__date__ || new Date().toISOString().split('T')[0]}
                     onChange={(e) => setCustomValues(v => ({ ...v, __date__: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                 </div>
               )}
@@ -990,13 +990,13 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 }
                 return (
                   <div key={f.id}>
-                    <label className="text-xs font-medium text-zinc-600 mb-1 block">{f.name}</label>
+                    <label className="text-xs font-medium text-muted mb-1 block">{f.name}</label>
                     {f.type === 'char' && (
                       <input
                         type="text"
                         value={customValues[f.id] ?? ''}
                         onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
                       />
                     )}
                     {f.type === 'int' && (
@@ -1005,7 +1005,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                         step="1"
                         value={customValues[f.id] ?? ''}
                         onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
                       />
                     )}
                     {f.type === 'float' && (
@@ -1014,11 +1014,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                         step="0.01"
                         value={customValues[f.id] ?? ''}
                         onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                        className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
                       />
                     )}
                     {f.type === 'boolean' && (
-                      <label className="flex items-center gap-2 text-sm text-zinc-700">
+                      <label className="flex items-center gap-2 text-sm text-muted">
                         <input
                           type="checkbox"
                           checked={!!customValues[f.id]}
@@ -1046,8 +1046,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       )}
 
       {mainCategory === 'nueva' && (
-        <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 space-y-3">
-          <p className="text-xs font-medium text-zinc-600">Quieres agregarlo al dashboard?</p>
+        <div className="p-3 rounded-xl bg-zinc-50 border border-line space-y-3">
+          <p className="text-xs font-medium text-muted">Quieres agregarlo al dashboard?</p>
           <div className="flex gap-2">
             <button
               type="button"
@@ -1056,7 +1056,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 setCreateNewDashCategory(null);
                 setDashboardMessage('');
               }}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'yes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'yes' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-muted border-line'}`}
             >
               Si
             </button>
@@ -1070,7 +1070,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 if (customTitle.trim()) next[customTitle.trim()] = 'NONE';
                 onUpdateDashboardGroups?.(next);
               }}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'no' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium border ${addToDashboard === 'no' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-muted border-line'}`}
             >
               No
             </button>
@@ -1078,7 +1078,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
           {addToDashboard === 'yes' && (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-zinc-600">Crear nueva categoria en el dashboard?</p>
+              <p className="text-xs font-medium text-muted">Crear nueva categoria en el dashboard?</p>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -1089,7 +1089,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     if (customTitle.trim()) next[customTitle.trim()] = 'NEW:' + customTitle.trim();
                     onUpdateDashboardGroups?.(next);
                   }}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'yes' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'yes' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-muted border-line'}`}
                 >
                   Si
                 </button>
@@ -1099,7 +1099,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     setCreateNewDashCategory('no');
                     setDashboardMessage('');
                   }}
-                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'no' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-zinc-700 border-zinc-200'}`}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium border ${createNewDashCategory === 'no' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-muted border-line'}`}
                 >
                   No
                 </button>
@@ -1107,11 +1107,11 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
               {createNewDashCategory === 'no' && (
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-zinc-600 block">A que categoria lo deseas unir?</label>
+                  <label className="text-xs font-medium text-muted block">A que categoria lo deseas unir?</label>
                   <select
                     value={joinDashTarget}
                     onChange={(e) => setJoinDashTarget(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl bg-white border border-line text-sm"
                   >
                     <option value="">Selecciona</option>
                     {categories.map(c => (
@@ -1146,16 +1146,16 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         </div>
       )}
       {(customCategories || []).some((c: any) => c.id === mainCategory) && (
-        <div className="p-3 rounded-xl bg-white border border-zinc-200 space-y-3">
-          <p className="text-sm font-bold text-zinc-900">{customTitle}</p>
+        <div className="p-3 rounded-xl bg-white border border-line space-y-3">
+          <p className="text-sm font-bold text-main">{customTitle}</p>
           {includeDate && (
             <div>
-              <label className="text-xs font-medium text-zinc-600 mb-1 block">Fecha de creacion</label>
+              <label className="text-xs font-medium text-muted mb-1 block">Fecha de creacion</label>
               <input
                 type="date"
                 value={customValues.__date__ || new Date().toISOString().split('T')[0]}
                 onChange={(e) => setCustomValues(v => ({ ...v, __date__: e.target.value }))}
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
               />
             </div>
           )}
@@ -1166,18 +1166,18 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             }
             return (
               <div key={f.id}>
-                <label className="text-xs font-medium text-zinc-600 mb-1 block">{f.name}</label>
+                <label className="text-xs font-medium text-muted mb-1 block">{f.name}</label>
                 {f.type === 'char' && (
-                  <input type="text" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                  <input type="text" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
                 )}
                 {f.type === 'int' && (
-                  <input type="number" step="1" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                  <input type="number" step="1" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
                 )}
                 {f.type === 'float' && (
-                  <input type="number" step="0.01" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm" />
+                  <input type="number" step="0.01" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
                 )}
                 {f.type === 'boolean' && (
-                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                  <label className="flex items-center gap-2 text-sm text-muted">
                     <input type="checkbox" checked={!!customValues[f.id]} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.checked }))} className="w-4 h-4" />
                     {f.name}
                   </label>
@@ -1206,7 +1206,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       )}
 
       {/* Security collapsible */}
-      <div className="rounded-xl border border-zinc-200 overflow-hidden">
+      <div className="rounded-xl border border-line overflow-hidden">
         <button
           type="button"
           onClick={() => setSecurityOpen(!securityOpen)}
@@ -1214,13 +1214,13 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
         >
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-amber-500" />
-            <span className="text-sm font-medium text-zinc-900">Seguridad (contraseña)</span>
+            <span className="text-sm font-medium text-main">Seguridad (contraseña)</span>
           </div>
           {securityOpen ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
         </button>
         {securityOpen && (
           <div className="px-3 pb-3 border-t border-zinc-100 pt-3 space-y-3">
-            <label className="flex items-center gap-2 text-sm text-zinc-700">
+            <label className="flex items-center gap-2 text-sm text-muted">
               <input
                 type="checkbox"
                 checked={protectEnabled}
@@ -1232,25 +1232,25 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             {protectEnabled && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-600 mb-1">Contraseña de registro</label>
+                  <label className="block text-xs font-medium text-muted mb-1">Contraseña de registro</label>
                   <input
                     type="password"
                     placeholder="Establecer contraseña"
                     value={gatePassword}
                     onChange={(e) => setGatePassword(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                 </div>
                 {incomeLocked && (
                   <div>
-                    <label className="block text-xs font-medium text-zinc-600 mb-1">Desbloquear para registrar ingreso</label>
+                    <label className="block text-xs font-medium text-muted mb-1">Desbloquear para registrar ingreso</label>
                     <div className="flex gap-2">
                       <input
                         type="password"
                         placeholder="Contraseña"
                         value={enteredGatePassword}
                         onChange={(e) => setEnteredGatePassword(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm"
+                        className="flex-1 px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                       />
                       <button
                         type="button"
@@ -1316,7 +1316,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       {/* Purchase History */}
       <div className="pt-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-zinc-900">
+          <h3 className="font-bold text-main">
             Historial
             {mainCategory === 'comida' && ' de Comida'}
             {mainCategory === 'transporte' && ' de Transporte'}
@@ -1324,7 +1324,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             {mainCategory === 'ingresos' && ' de Ingresos'}
             {mainCategory === 'nueva' && ' General'}
           </h3>
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-muted">
             {transactions.filter((tx) => historyFilter(tx)).length} registros
           </span>
         </div>
@@ -1341,14 +1341,14 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   {tx.title.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-900 truncate">{tx.title}</p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-sm font-medium text-main truncate">{tx.title}</p>
+                  <p className="text-xs text-muted">
                     {tx.date}{tx.quantity ? ` · ${tx.quantity} ${tx.unit || 'ud'}` : ''}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`text-sm font-bold ${tx.type === 'expense' ? 'text-zinc-900' : 'text-emerald-600'}`}>
+                <span className={`text-sm font-bold ${tx.type === 'expense' ? 'text-main' : 'text-emerald-600'}`}>
                   {tx.type === 'expense' ? '-' : '+'}{currencySymbol}{tx.amount.toFixed(2)}
                 </span>
                 {onUpdateTransaction && (
