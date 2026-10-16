@@ -54,7 +54,7 @@ export const DynamicIsland: React.FC<DynamicIslandProps> = ({ notification, onDi
         <div className="flex items-center justify-between gap-3 px-4 py-1.5 bg-black/90 text-white rounded-full shadow-lg border border-white/10 backdrop-blur-xl h-7 transition-all">
           <div className="w-2.5 h-2.5 rounded-full bg-blue-500/80 animate-pulse" />
           <span className="text-[10px] tracking-wide font-medium text-white/80">
-            {isLocked ? 'Cifrado E2EE Activo' : 'SynapsePay'}
+            {isLocked ? 'Cifrado E2EE Activo' : 'NEUROPAY'}
           </span>
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
         </div>
