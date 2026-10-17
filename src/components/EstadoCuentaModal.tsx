@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import { FileText, X, Lock } from 'lucide-react';
 import type { Transaction } from '../types/index.ts';
 import {
+  buscarMovimientos,
   ClaveIncorrecta,
   ClaveRequerida,
-  gastosATransacciones,
-  indicesEnRango,
+  movimientosATransacciones,
   parsearEstadoCuenta,
-  rangoCompleto,
-  buscarAbonos,
-  seleccionInicial,
+  type MovimientoEstado,
   type ResultadoParseo,
+  type TipoMovimiento,
 } from '../lib/estadoCuenta.ts';
 import { parseDecimal } from '../lib/money.ts';
 
@@ -23,10 +22,15 @@ interface EstadoCuentaModalProps {
 }
 
 type Resultado = Extract<ResultadoParseo, { ok: true }>;
-type Paso = 'archivo' | 'rango' | 'lista';
+type Paso = 'archivo' | 'condiciones' | 'resultados';
 
 const formato = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const diaMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
+
+const etiquetasDe = (tipo: TipoMovimiento | null) =>
+  tipo === 'egreso'
+    ? { monto: 'Monto del egreso', referencia: 'A quién pagó', ejemplo: 'Ej. Yape Juan o nombre del comercio' }
+    : { monto: 'Monto del ingreso', referencia: 'Quién abonó', ejemplo: 'Ej. HABERES o nombre de quien abonó' };
 
 export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
   open,
@@ -42,11 +46,14 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [paso, setPaso] = useState<Paso>('archivo');
+  const [tipo, setTipo] = useState<TipoMovimiento | null>(null);
+  const [montoTexto, setMontoTexto] = useState('');
+  const [referencia, setReferencia] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const [hallados, setHallados] = useState<MovimientoEstado[]>([]);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
-  const [montoAbono, setMontoAbono] = useState('');
 
   if (!open) return null;
 
@@ -58,9 +65,12 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
     setError(null);
     setResultado(null);
     setPaso('archivo');
+    setTipo(null);
+    setMontoTexto('');
+    setReferencia('');
     setDesde('');
     setHasta('');
-    setMontoAbono('');
+    setHallados([]);
     setMarcados(new Set());
     setConfirmando(false);
   };
@@ -82,13 +92,10 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
         setResultado(null);
         return;
       }
-      const completo = rangoCompleto(r.gastos);
       setResultado(r);
-      setDesde(completo.desde);
-      setHasta(completo.hasta);
       setPideClave(false);
       setClave('');
-      setPaso('rango');
+      setPaso('condiciones');
     } catch (e) {
       if (e instanceof ClaveRequerida) {
         setPideClave(true);
@@ -111,11 +118,18 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
     void procesar(f);
   };
 
-  const verGastos = () => {
-    if (!resultado) return;
-    setMarcados(new Set(seleccionInicial(resultado.gastos, desde, hasta)));
+  const monto = parseDecimal(montoTexto);
+  const montoValido = !Number.isNaN(monto) && monto > 0;
+  const rangoValido = !desde || !hasta || desde <= hasta;
+  const puedeBuscar = !!tipo && montoValido && rangoValido;
+
+  const buscar = () => {
+    if (!resultado || !tipo) return;
+    const encontrados = buscarMovimientos(resultado.movimientos, { tipo, monto, referencia, desde, hasta });
+    setHallados(encontrados);
+    setMarcados(new Set(encontrados.flatMap((m, i) => (m.posibleDuplicado ? [] : [i]))));
     setConfirmando(false);
-    setPaso('lista');
+    setPaso('resultados');
   };
 
   const alternar = (i: number) =>
@@ -126,23 +140,19 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
       return siguiente;
     });
 
-  const completo = rangoCompleto(resultado?.gastos ?? []);
-  const esRangoCompleto = !!resultado && desde === completo.desde && hasta === completo.hasta;
-  const rangoValido = !!desde && !!hasta && desde <= hasta;
-  const enRango = resultado && rangoValido ? indicesEnRango(resultado.gastos, desde, hasta) : [];
-  const seleccionados = resultado ? enRango.filter((i) => marcados.has(i)).map((i) => resultado.gastos[i]) : [];
-  const totalSeleccionado = seleccionados.reduce((suma, g) => suma + g.monto, 0);
-  const totalEnRango = resultado ? enRango.reduce((suma, i) => suma + resultado.gastos[i].monto, 0) : 0;
-  const duplicadosEnRango = resultado ? enRango.filter((i) => resultado.gastos[i].posibleDuplicado).length : 0;
-  const abonosHallados =
-    resultado && montoAbono.trim() ? buscarAbonos(resultado.abonosDetalle, parseDecimal(montoAbono)) : [];
-  const coincideConBanco =
-    resultado?.controlBanco && esRangoCompleto
-      ? Math.abs(resultado.controlBanco.cargos - resultado.cargos) < 0.005
+  const elegidos = hallados.filter((_, i) => marcados.has(i));
+  const totalElegido = elegidos.reduce((suma, m) => suma + m.monto, 0);
+  const plural = elegidos.length !== 1;
+  const nombreElegidos = tipo === 'ingreso' ? (plural ? 'ingresos' : 'ingreso') : plural ? 'gastos' : 'gasto';
+  const etiquetas = etiquetasDe(tipo);
+  const cuadraConBanco =
+    resultado?.controlBanco
+      ? Math.abs(resultado.controlBanco.cargos - resultado.cargos) < 0.005 &&
+        Math.abs(resultado.controlBanco.abonos - resultado.abonos) < 0.005
       : null;
 
   const subir = () => {
-    onConfirm(gastosATransacciones(seleccionados, Date.now().toString(36)));
+    onConfirm(movimientosATransacciones(elegidos, Date.now().toString(36)));
     cerrar();
   };
 
@@ -205,81 +215,88 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
           </div>
         )}
 
-        {paso === 'rango' && resultado && (
-          <div className="space-y-3">
-            <p className="text-sm text-main">
-              El estado tiene <strong>{resultado.gastos.length}</strong> gastos, del {diaMes(completo.desde)} al{' '}
-              {diaMes(completo.hasta)}.
+        {paso === 'condiciones' && resultado && (
+          <div className="space-y-4">
+            <p className="text-xs text-muted">
+              Leí {resultado.movimientos.length} movimientos (
+              {resultado.movimientos.filter((m) => m.tipo === 'ingreso').length} ingresos y{' '}
+              {resultado.movimientos.filter((m) => m.tipo === 'egreso').length} egresos).
+              {cuadraConBanco === true && ' Coinciden con los totales que imprime el banco.'}
+              {cuadraConBanco === false && ' No coinciden con los totales del banco; revisa antes de subir.'}
             </p>
-            <p className="text-sm font-medium text-main">¿Desde qué fecha quieres subir?</p>
+            <p className="text-sm font-semibold text-main">Indica tus condiciones</p>
             <div className="grid grid-cols-2 gap-2">
-              <label className="text-xs text-muted space-y-1">
-                Desde
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
-                />
-              </label>
-              <label className="text-xs text-muted space-y-1">
-                Hasta
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
-                />
-              </label>
-            </div>
-            <div className="space-y-2 rounded-xl border border-line p-3">
-              <p className="text-xs font-medium text-muted">¿Desde qué abono empiezas? Escribe su monto:</p>
-              <input
-                type="text"
-                inputMode="decimal"
-                placeholder="Ej. 750"
-                value={montoAbono}
-                onChange={(e) => setMontoAbono(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
-              />
-              {abonosHallados.map((a, i) => (
+              {(['ingreso', 'egreso'] as const).map((t) => (
                 <button
-                  key={i}
+                  key={t}
                   type="button"
-                  onClick={() => {
-                    setDesde(a.fecha);
-                    setHasta(completo.hasta);
-                  }}
-                  className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-blue-50 text-xs text-blue-700"
+                  onClick={() => setTipo(t)}
+                  className={`py-2.5 rounded-xl text-sm font-medium ${
+                    tipo === t ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-muted'
+                  }`}
                 >
-                  <span className="truncate">
-                    {diaMes(a.fecha)} · {a.descripcion}
-                  </span>
-                  <span className="shrink-0 font-semibold">{formato(a.monto)}</span>
+                  {t === 'ingreso' ? 'Ingreso' : 'Egreso'}
                 </button>
               ))}
-              {montoAbono.trim() && abonosHallados.length === 0 && (
-                <p className="text-xs text-muted">No encontré un abono de ese monto en el estado.</p>
+            </div>
+            {tipo && (
+              <>
+                <label className="block text-xs font-medium text-muted space-y-1">
+                  {etiquetas.monto}
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={montoTexto}
+                    onChange={(e) => setMontoTexto(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-muted space-y-1">
+                  {etiquetas.referencia} (opcional)
+                  <input
+                    type="text"
+                    placeholder={etiquetas.ejemplo}
+                    value={referencia}
+                    onChange={(e) => setReferencia(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
+                  />
+                </label>
+              </>
+            )}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted">Rango de fechas (opcional, para afinar la búsqueda)</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs text-muted space-y-1">
+                  Desde
+                  <input
+                    type="date"
+                    value={desde}
+                    onChange={(e) => setDesde(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
+                  />
+                </label>
+                <label className="text-xs text-muted space-y-1">
+                  Hasta
+                  <input
+                    type="date"
+                    value={hasta}
+                    onChange={(e) => setHasta(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
+                  />
+                </label>
+              </div>
+              {!rangoValido && (
+                <p className="text-xs text-rose-500">La fecha inicial debe ser igual o anterior a la final.</p>
               )}
             </div>
-            {!rangoValido && (
-              <p className="text-xs text-rose-500">La fecha inicial debe ser igual o anterior a la final.</p>
-            )}
-            {rangoValido && enRango.length === 0 && (
-              <p className="text-xs text-rose-500">No hay gastos en ese rango.</p>
-            )}
-            {rangoValido && enRango.length > 0 && (
-              <p className="text-xs text-muted">
-                {enRango.length} gastos en el rango, por {currencySymbol} {formato(totalEnRango)}.
-              </p>
-            )}
             <button
               type="button"
-              disabled={!rangoValido || enRango.length === 0}
-              onClick={verGastos}
+              disabled={!puedeBuscar}
+              onClick={buscar}
               className="w-full py-3 rounded-2xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-40"
             >
-              Ver los gastos del rango
+              Buscar en el PDF
             </button>
             <button type="button" onClick={reiniciar} className="w-full py-2 text-xs text-muted">
               Elegir otro PDF
@@ -287,73 +304,86 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
           </div>
         )}
 
-        {paso === 'lista' && resultado && !confirmando && (
+        {paso === 'resultados' && resultado && !confirmando && (
           <div className="space-y-3">
-            <p className="text-sm text-main">
-              <strong>{seleccionados.length}</strong> de {enRango.length} gastos del {diaMes(desde)} al{' '}
-              {diaMes(hasta)}, por {currencySymbol} {formato(totalSeleccionado)}.
-            </p>
-            {coincideConBanco === true && (
-              <p className="text-xs text-emerald-600">Coincide con el total de cargos que imprime el banco.</p>
+            {hallados.length === 0 ? (
+              <p className="text-sm text-main">
+                No encontré ningún {tipo === 'ingreso' ? 'ingreso' : 'egreso'} de {currencySymbol} {formato(monto)} con
+                esas condiciones. Prueba con otra referencia o amplía el rango.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-main">
+                  Encontré <strong>{hallados.length}</strong> {hallados.length === 1 ? 'movimiento' : 'movimientos'}.
+                  Marcados: <strong>{elegidos.length}</strong> por {currencySymbol} {formato(totalElegido)}.
+                </p>
+                <p className="text-xs text-muted">
+                  Los que ya están registrados (mismo tipo, día y monto) vienen sin marcar.
+                </p>
+                <div className="max-h-72 overflow-y-auto divide-y divide-zinc-100 rounded-xl border border-line">
+                  {hallados.map((m, i) => (
+                    <label key={i} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={marcados.has(i)}
+                        onChange={() => alternar(i)}
+                        className="w-4 h-4 shrink-0"
+                      />
+                      <span className="text-xs text-muted w-10 shrink-0">{diaMes(m.fecha)}</span>
+                      <span className="flex-1 min-w-0 truncate text-main">
+                        {m.descripcion}
+                        {m.posibleDuplicado && <span className="ml-1 text-[10px] text-amber-600">ya registrado</span>}
+                      </span>
+                      <span className="shrink-0 font-medium text-main">{formato(m.monto)}</span>
+                    </label>
+                  ))}
+                </div>
+              </>
             )}
-            {coincideConBanco === false && (
-              <p className="text-xs text-rose-500">No coincide con el total del banco. Revisa antes de subir.</p>
-            )}
-            <p className="text-xs text-muted">
-              Comparado con tus registros: <strong>{enRango.length - duplicadosEnRango}</strong> nuevos y{' '}
-              <strong>{duplicadosEnRango}</strong> ya registrados (mismo día y monto). Los ya registrados vienen sin
-              marcar.
-            </p>
-            <div className="flex gap-2 text-xs">
-              <button type="button" onClick={() => setMarcados(new Set(enRango))} className="px-3 py-1.5 rounded-lg bg-zinc-100 text-muted">
-                Marcar todos
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPaso('condiciones')}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-muted text-sm font-medium"
+              >
+                Cambiar condiciones
               </button>
-              <button type="button" onClick={() => setMarcados(new Set())} className="px-3 py-1.5 rounded-lg bg-zinc-100 text-muted">
-                Desmarcar todos
-              </button>
-              <button type="button" onClick={() => setPaso('rango')} className="ml-auto px-3 py-1.5 rounded-lg text-blue-600">
-                Cambiar rango
-              </button>
+              {hallados.length > 0 && (
+                <button
+                  type="button"
+                  disabled={elegidos.length === 0}
+                  onClick={() => setConfirmando(true)}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium disabled:opacity-40"
+                >
+                  Subir {elegidos.length}
+                </button>
+              )}
             </div>
-            <div className="max-h-72 overflow-y-auto divide-y divide-zinc-100 rounded-xl border border-line">
-              {enRango.map((i) => {
-                const g = resultado.gastos[i];
-                return (
-                  <label key={i} className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={marcados.has(i)} onChange={() => alternar(i)} className="w-4 h-4 shrink-0" />
-                    <span className="text-xs text-muted w-10 shrink-0">{diaMes(g.fecha)}</span>
-                    <span className="flex-1 min-w-0 truncate text-main">
-                      {g.descripcion}
-                      {g.posibleDuplicado && <span className="ml-1 text-[10px] text-amber-600">ya registrado</span>}
-                    </span>
-                    <span className="shrink-0 font-medium text-main">{formato(g.monto)}</span>
-                  </label>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              disabled={seleccionados.length === 0}
-              onClick={() => setConfirmando(true)}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-40"
-            >
-              Subir {seleccionados.length} gastos
-            </button>
           </div>
         )}
 
-        {paso === 'lista' && resultado && confirmando && (
+        {paso === 'resultados' && resultado && confirmando && (
           <div className="space-y-4 text-center">
-            <p className="text-base font-semibold text-main">¿Deseas subir los gastos?</p>
+            <p className="text-base font-semibold text-main">
+              ¿Deseas subir {plural ? 'estos movimientos' : 'este movimiento'}?
+            </p>
             <p className="text-sm text-muted">
-              Se agregarán {seleccionados.length} gastos del {diaMes(desde)} al {diaMes(hasta)} por {currencySymbol}{' '}
-              {formato(totalSeleccionado)}.
+              {plural ? 'Se agregarán' : 'Se agregará'} {elegidos.length} {nombreElegidos} por {currencySymbol}{' '}
+              {formato(totalElegido)}.
             </p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setConfirmando(false)} className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-muted text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => setConfirmando(false)}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-200 text-muted text-sm font-medium"
+              >
                 No, volver
               </button>
-              <button type="button" onClick={subir} className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium">
+              <button
+                type="button"
+                onClick={subir}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium"
+              >
                 Sí, subir
               </button>
             </div>

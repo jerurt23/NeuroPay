@@ -8,7 +8,10 @@ export interface ItemPdf {
   s: string;
 }
 
-export interface GastoEstado {
+export type TipoMovimiento = 'ingreso' | 'egreso';
+
+export interface MovimientoEstado {
+  tipo: TipoMovimiento;
   fecha: string;
   descripcion: string;
   monto: number;
@@ -21,17 +24,19 @@ export interface ControlBanco {
   abonos: number;
 }
 
-export interface AbonoEstado {
-  fecha: string;
-  descripcion: string;
+/** Lo que indica la persona para encontrar un movimiento dentro del estado. */
+export interface Condiciones {
+  tipo: TipoMovimiento;
   monto: number;
+  referencia: string;
+  desde?: string;
+  hasta?: string;
 }
 
 export type ResultadoParseo =
   | {
       ok: true;
-      gastos: GastoEstado[];
-      abonosDetalle: AbonoEstado[];
+      movimientos: MovimientoEstado[];
       cargos: number;
       abonos: number;
       controlBanco: ControlBanco | null;
@@ -76,6 +81,8 @@ export function categoriaDe(descripcion: string): string {
 
 const aNumero = (texto: string) => Number(texto.replace(/,/g, ''));
 const redondear = (n: number) => Math.round(n * 100) / 100;
+const normalizar = (texto: string) =>
+  texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 /** Agrupa los textos de una misma línea, de arriba hacia abajo, ordenados de izquierda a derecha. */
 function filasDe(items: ItemPdf[]): ItemPdf[][] {
@@ -145,8 +152,8 @@ function textoDe(celdas: ItemPdf[]): string {
 }
 
 /**
- * Lee los gastos (cargos) de un estado de cuenta. Los abonos se suman solo para
- * validar contra el total del banco. Nada se guarda aquí: solo se lee el PDF ya abierto.
+ * Lee todos los movimientos de un estado de cuenta: cargos (egresos) y abonos (ingresos).
+ * Nada se guarda aquí: solo se lee el PDF ya abierto.
  */
 export function parsearEstadoCuenta(paginas: ItemPdf[][], existentes: Transaction[] = []): ResultadoParseo {
   const items = paginas.flat();
@@ -161,9 +168,9 @@ export function parsearEstadoCuenta(paginas: ItemPdf[][], existentes: Transactio
   }
 
   const anio = anioDelPeriodo(items);
-  const gastos: GastoEstado[] = [];
+  const movimientos: MovimientoEstado[] = [];
+  let cargos = 0;
   let abonos = 0;
-  const abonosDetalle: AbonoEstado[] = [];
 
   for (const fila of paginas.flatMap(filasDe)) {
     if (!FECHA_CORTA.test(fila[0]?.s ?? '')) continue;
@@ -171,76 +178,81 @@ export function parsearEstadoCuenta(paginas: ItemPdf[][], existentes: Transactio
     if (!monto) continue;
     const mes = MESES[fila[0].s.slice(2)];
     if (!mes) continue;
+
     const valor = aNumero(monto.s);
     const fecha = `${anio}-${mes}-${fila[0].s.slice(0, 2)}`;
     const descripcion = textoDe(
       fila.slice(1).filter((i) => i !== monto && i.s !== '*' && !FECHA_CORTA.test(i.s))
     );
-    if (monto.x + monto.ancho >= corte) {
-      abonos += valor;
-      abonosDetalle.push({ fecha, descripcion, monto: valor });
-      continue;
-    }
-    gastos.push({
+    const esIngreso = monto.x + monto.ancho >= corte;
+    const tipo: TipoMovimiento = esIngreso ? 'ingreso' : 'egreso';
+    if (esIngreso) abonos += valor;
+    else cargos += valor;
+
+    movimientos.push({
+      tipo,
       fecha,
       descripcion,
       monto: valor,
-      categoria: categoriaDe(descripcion),
+      categoria: esIngreso ? 'otro' : categoriaDe(descripcion),
       posibleDuplicado: existentes.some(
-        (t) => t.type === 'expense' && t.date === fecha && Math.abs(t.amount - valor) < 0.005
+        (t) =>
+          t.type === (esIngreso ? 'income' : 'expense') && t.date === fecha && Math.abs(t.amount - valor) < 0.005
       ),
     });
   }
 
-  if (gastos.length === 0) {
-    return { ok: false, error: 'No encontré gastos (cargos) en este estado de cuenta.' };
+  if (movimientos.length === 0) {
+    return { ok: false, error: 'No encontré movimientos en este estado de cuenta.' };
   }
 
   return {
     ok: true,
-    gastos,
-    cargos: redondear(gastos.reduce((suma, g) => suma + g.monto, 0)),
+    movimientos,
+    cargos: redondear(cargos),
     abonos: redondear(abonos),
-    abonosDetalle,
     controlBanco: controlDelBanco(items, corte),
   };
 }
 
-/** Abonos de ese monto exacto. Sirven para empezar a subir desde el día que llegó un sueldo, por ejemplo. */
-export function buscarAbonos(abonos: AbonoEstado[], monto: number): AbonoEstado[] {
-  return abonos.filter((a) => Math.abs(a.monto - monto) < 0.005);
+/**
+ * ¿La descripción contiene la referencia? Ignora mayúsculas y acentos, y cada palabra
+ * de la referencia debe aparecer en algún lugar. Referencia vacía: coincide con todo.
+ */
+export function coincideReferencia(descripcion: string, referencia: string): boolean {
+  const texto = normalizar(descripcion);
+  return normalizar(referencia)
+    .split(' ')
+    .filter(Boolean)
+    .every((palabra) => texto.includes(palabra));
 }
 
-/** Primera y última fecha de los gastos (YYYY-MM-DD). */
-export function rangoCompleto(gastos: GastoEstado[]): { desde: string; hasta: string } {
-  const fechas = gastos.map((g) => g.fecha).sort();
-  return { desde: fechas[0] ?? '', hasta: fechas[fechas.length - 1] ?? '' };
+/** Movimientos que cumplen las condiciones: tipo, monto exacto, referencia y rango de fechas (si se indica). */
+export function buscarMovimientos(movimientos: MovimientoEstado[], c: Condiciones): MovimientoEstado[] {
+  return movimientos.filter(
+    (m) =>
+      m.tipo === c.tipo &&
+      Math.abs(m.monto - c.monto) < 0.005 &&
+      coincideReferencia(m.descripcion, c.referencia) &&
+      (!c.desde || m.fecha >= c.desde) &&
+      (!c.hasta || m.fecha <= c.hasta)
+  );
 }
 
-/** Índices de los gastos cuya fecha está entre desde y hasta, ambas incluidas. */
-export function indicesEnRango(gastos: GastoEstado[], desde: string, hasta: string): number[] {
-  return gastos.flatMap((g, i) => (g.fecha >= desde && g.fecha <= hasta ? [i] : []));
-}
-
-/** Lo que viene marcado al elegir un rango: los gastos del rango que no están ya registrados. */
-export function seleccionInicial(gastos: GastoEstado[], desde: string, hasta: string): number[] {
-  return indicesEnRango(gastos, desde, hasta).filter((i) => !gastos[i].posibleDuplicado);
-}
-
-/** Convierte los gastos elegidos en movimientos de NEUROPAY. */
-export function gastosATransacciones(gastos: GastoEstado[], lote: string): Transaction[] {
-  return gastos.map((g, i): Transaction => ({
+/** Convierte los movimientos elegidos en movimientos de NEUROPAY. */
+export function movimientosATransacciones(movimientos: MovimientoEstado[], lote: string): Transaction[] {
+  return movimientos.map((m, i): Transaction => ({
     id: `est_${lote}_${i}`,
-    title: g.descripcion || 'Gasto',
-    amount: g.monto,
-    type: 'expense',
-    category: g.categoria,
-    date: g.fecha,
+    title: m.descripcion || (m.tipo === 'ingreso' ? 'Ingreso' : 'Gasto'),
+    amount: m.monto,
+    type: m.tipo === 'ingreso' ? 'income' : 'expense',
+    category: m.categoria,
+    date: m.fecha,
     paymentMethod: 'banca_movil',
     bankSyncMeta: {
       bankName: 'Estado de cuenta',
       emailSender: 'Estado de cuenta (PDF)',
-      rawSnippet: g.descripcion,
+      rawSnippet: m.descripcion,
       syncedAt: new Date().toISOString(),
       autoImported: false,
     },
