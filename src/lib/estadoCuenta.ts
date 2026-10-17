@@ -31,6 +31,7 @@ export interface Condiciones {
   referencia: string;
   desde?: string;
   hasta?: string;
+  excluirWarda?: boolean;
 }
 
 export type ResultadoParseo =
@@ -227,6 +228,11 @@ export function coincideReferencia(descripcion: string, referencia: string): boo
     .every((palabra) => texto.includes(palabra));
 }
 
+/** Movimientos del servicio Wardadito del BCP: ahorro propio, no es gasto ni ingreso. */
+export function esWarda(descripcion: string): boolean {
+  return /\bwarda/.test(normalizar(descripcion));
+}
+
 /** Primera y última fecha con movimientos: el periodo que cubre el estado (YYYY-MM-DD). */
 export function periodoDe(movimientos: MovimientoEstado[]): { desde: string; hasta: string } {
   const fechas = movimientos.map((m) => m.fecha).sort();
@@ -244,7 +250,8 @@ export function buscarMovimientos(movimientos: MovimientoEstado[], c: Condicione
       (c.monto === undefined || Math.abs(m.monto - c.monto) < 0.005) &&
       coincideReferencia(m.descripcion, c.referencia) &&
       (!c.desde || m.fecha >= c.desde) &&
-      (!c.hasta || m.fecha <= c.hasta)
+      (!c.hasta || m.fecha <= c.hasta) &&
+      (!c.excluirWarda || !esWarda(m.descripcion))
   );
 }
 

@@ -4,6 +4,7 @@ import type { Transaction } from '../types/index.ts';
 import {
   buscarMovimientos,
   ClaveIncorrecta,
+  esWarda,
   ClaveRequerida,
   movimientosATransacciones,
   parsearEstadoCuenta,
@@ -53,6 +54,8 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [resumenBusqueda, setResumenBusqueda] = useState('');
+  const [excluirWarda, setExcluirWarda] = useState(true);
+  const [omitidos, setOmitidos] = useState({ cantidad: 0, total: 0 });
   const [hallados, setHallados] = useState<MovimientoEstado[]>([]);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
@@ -73,6 +76,8 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
     setDesde('');
     setHasta('');
     setResumenBusqueda('');
+    setExcluirWarda(true);
+    setOmitidos({ cantidad: 0, total: 0 });
     setHallados([]);
     setMarcados(new Set());
     setConfirmando(false);
@@ -132,13 +137,18 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
 
   const buscar = () => {
     if (!resultado || !tipo) return;
-    const encontrados = buscarMovimientos(resultado.movimientos, {
+    const base = {
       tipo,
       monto: montoIndicado ? monto : undefined,
       referencia,
       desde,
       hasta,
-    });
+    };
+    const encontrados = buscarMovimientos(resultado.movimientos, { ...base, excluirWarda });
+    const wardaOmitidos = excluirWarda
+      ? buscarMovimientos(resultado.movimientos, { ...base, excluirWarda: false }).filter((m) => esWarda(m.descripcion))
+      : [];
+    setOmitidos({ cantidad: wardaOmitidos.length, total: wardaOmitidos.reduce((suma, m) => suma + m.monto, 0) });
     const resumen = [
       montoIndicado ? `de ${currencySymbol} ${formato(monto)}` : '',
       referencia.trim() ? `con la referencia "${referencia.trim()}"` : '',
@@ -323,6 +333,16 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
             </div>
             <button
               type="button"
+              aria-pressed={excluirWarda}
+              onClick={() => setExcluirWarda((v) => !v)}
+              className={`w-full py-2.5 rounded-xl text-sm font-medium border ${
+                excluirWarda ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-zinc-100 border-line text-muted'
+              }`}
+            >
+              {excluirWarda ? '✓ Excluyendo Warda (Wardadito del BCP)' : 'Excluir Warda (Wardadito del BCP)'}
+            </button>
+            <button
+              type="button"
               disabled={!puedeBuscar}
               onClick={buscar}
               className="w-full py-3 rounded-2xl bg-blue-600 text-white text-sm font-semibold disabled:opacity-40"
@@ -337,6 +357,12 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
 
         {paso === 'resultados' && resultado && periodo && !confirmando && (
           <div className="space-y-3">
+            {omitidos.cantidad > 0 && (
+              <p className="text-xs text-amber-700">
+                Excluí {omitidos.cantidad} movimientos de Warda por {currencySymbol} {formato(omitidos.total)}. Para
+                verlos, vuelve a las condiciones y desactiva la exclusión.
+              </p>
+            )}
             {hallados.length === 0 ? (
               <p className="text-sm text-main">
                 No encontré ningún {tipo === 'ingreso' ? 'ingreso' : 'egreso'}

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buscarMovimientos,
   coincideReferencia,
+  esWarda,
   movimientosATransacciones,
   parsearEstadoCuenta,
   periodoDe,
@@ -134,6 +135,29 @@ describe('búsqueda por condiciones', () => {
 
   it('el periodo del estado va de la primera a la última fecha', () => {
     assert.deepEqual(periodoDe(r.movimientos), { desde: '2026-09-02', hasta: '2026-09-05' });
+  });
+});
+
+describe('exclusión de Warda', () => {
+  it('reconoce los movimientos de Wardadito sin confundirlos con otros', () => {
+    assert.equal(esWarda('WARDA'), true);
+    assert.equal(esWarda('Wardadito'), true);
+    assert.equal(esWarda('TOTTUS COMAS'), false);
+    assert.equal(esWarda('Yape Juan'), false);
+  });
+
+  it('excluye Warda de la búsqueda cuando se pide, en ambos tipos', () => {
+    const lista = [
+      mov('egreso', '2026-09-01', 'WARDA', 25),
+      mov('egreso', '2026-09-02', 'TOTTUS COMAS', 25),
+      mov('ingreso', '2026-09-03', 'WARDA', 25),
+    ];
+    assert.equal(buscarMovimientos(lista, { tipo: 'egreso', referencia: '' }).length, 2);
+    assert.deepEqual(
+      buscarMovimientos(lista, { tipo: 'egreso', referencia: '', excluirWarda: true }).map((m) => m.descripcion),
+      ['TOTTUS COMAS']
+    );
+    assert.equal(buscarMovimientos(lista, { tipo: 'ingreso', referencia: '', excluirWarda: true }).length, 0);
   });
 });
 
