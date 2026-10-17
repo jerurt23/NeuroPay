@@ -308,6 +308,8 @@ export default function App() {
           setSettings((prev) => ({ ...prev, accountPassword: newP }));
           return true;
         }}
+        getIdToken={() => (firebaseUser ? firebaseUser.getIdToken() : Promise.reject(new Error('No hay sesión activa.')))}
+        onImportTransactions={(txs) => setTransactions((prev) => [...txs, ...prev])}
         onDeleteCustomCategory={(id, deriveTo) => {
           const cat = settings.customCategories?.find((c) => c.id === id);
           setTransactions((prev) => prev.map((t) => (t.category === id ? { ...t, category: deriveTo || 'otro' } : t)));

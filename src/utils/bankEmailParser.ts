@@ -58,7 +58,16 @@ const CATEGORY_RULES: Record<StandardCategory, RegExp[]> = {
   otro: [],
 };
 
+/*
+ * Remitentes de los avisos. Yape y BCP son los que confirmo el usuario;
+ * el resto son los bancos ya soportados.
+ */
 const BANK_PATTERNS = [
+  {
+    bankName: 'Yape',
+    senderPattern: /notificaciones@yape\.pe/i,
+    subjectPattern: /yape/i,
+  },
   {
     bankName: 'BBVA',
     senderPattern: /bbva|notificaciones@bbva/i,
@@ -66,7 +75,7 @@ const BANK_PATTERNS = [
   },
   {
     bankName: 'BCP (Banco de Crédito)',
-    senderPattern: /bcp|notificaciones@bancobcp|alertas@bcp/i,
+    senderPattern: /bcp|notificaciones@notificacionesbcp\.com\.pe|notificaciones@bancobcp|alertas@bcp/i,
     subjectPattern: /aviso de consumo|cargo con tarjeta|transferencia/i,
   },
   {
@@ -81,7 +90,7 @@ const BANK_PATTERNS = [
   },
   {
     bankName: 'Nu Bank',
-    senderPattern: /nu|nubank|no-reply@nu/i,
+    senderPattern: /nubank|no-reply@nu\b/i,
     subjectPattern: /compra aprobada|nueva compra/i,
   },
   {
@@ -101,27 +110,46 @@ const BANK_PATTERNS = [
   },
 ];
 
+/** Numero con separador de miles y decimal opcional: 1,250.00 | 1.250,50 | 45.50 | 1250 */
+const NUM = '(\\d{1,3}(?:[.,]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)';
+
+const AMOUNT_RULES: RegExp[] = [
+  new RegExp(`(?:S\\/\\.?|PEN)\\s*${NUM}`, 'i'),
+  new RegExp(`(?:US\\$|USD|\\$)\\s*${NUM}`, 'i'),
+  new RegExp(`${NUM}\\s*(?:USD|US\\$|\\$|d[oó]lares)`, 'i'),
+  new RegExp(`${NUM}\\s*(?:S\\/\\.?|PEN|soles)`, 'i'),
+  new RegExp(`${NUM}\\s*(?:EUR|€|euros)`, 'i'),
+  new RegExp(`€\\s*${NUM}`, 'i'),
+  new RegExp(`por\\s+(?:un valor de\\s+)?${NUM}`, 'i'),
+];
+
+/** Convierte "1,250.00", "1.250,50", "45,50" o "45.50" en numero. */
+function normalizeNumber(raw: string): number {
+  let s = raw.trim();
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    // El separador que va al final es el decimal; el otro es de miles
+    s = lastDot > lastComma ? s.replace(/,/g, '') : s.replace(/\./g, '').replace(',', '.');
+  } else if (lastComma !== -1) {
+    const decimals = s.length - lastComma - 1;
+    s = decimals === 3 ? s.replace(/,/g, '') : s.replace(',', '.');
+  } else if (lastDot !== -1) {
+    const decimals = s.length - lastDot - 1;
+    if (decimals === 3) s = s.replace(/\./g, '');
+  }
+  return parseFloat(s);
+}
+
 /**
  * Extracts numeric amount and currency from notification text
  */
 export function extractAmountAndCurrency(text: string): { amount: number; currency: string } {
-  // Common currency symbols or codes
-  // S/ 45.00, US$ 12.50, USD 25.00, $ 18.99, 120,50 EUR, 45.00 soles
-  const regexes = [
-    /(?:S\/\.?|PEN)\s*([0-9]+(?:[.,][0-9]{1,2})?)/i,
-    /(?:US\$|USD|\$)\s*([0-9]+(?:[.,][0-9]{1,2})?)/i,
-    /([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:USD|US\$|\$|d[oó]lares)/i,
-    /([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:S\/\.?|PEN|soles)/i,
-    /([0-9]+(?:[.,][0-9]{1,2})?)\s*(?:EUR|€|euros)/i,
-    /(?:€)\s*([0-9]+(?:[.,][0-9]{1,2})?)/i,
-    /por\s+(?:un valor de\s+)?([0-9]+(?:[.,][0-9]{1,2})?)/i,
-  ];
-
-  for (const rx of regexes) {
+  for (const rx of AMOUNT_RULES) {
     const match = text.match(rx);
     if (match && match[1]) {
-      let rawNumber = match[1].replace(',', '.');
-      const val = parseFloat(rawNumber);
+      const val = normalizeNumber(match[1]);
       if (!isNaN(val) && val > 0) {
         let currency = '$';
         if (/S\/\.?|PEN|soles/i.test(match[0])) currency = 'S/';
@@ -132,13 +160,11 @@ export function extractAmountAndCurrency(text: string): { amount: number; curren
     }
   }
 
-  // Generic fallback: find any standalone number that looks like price
-  const genericMatch = text.match(/\b([0-9]{1,5}[.,][0-9]{2})\b/);
-  if (genericMatch) {
-    const val = parseFloat(genericMatch[1].replace(',', '.'));
-    if (!isNaN(val)) {
-      return { amount: Number(val.toFixed(2)), currency: '$' };
-    }
+  // Respaldo: cualquier numero con dos decimales
+  const generic = text.match(/\b(\d{1,5}[.,]\d{2})\b/);
+  if (generic) {
+    const val = normalizeNumber(generic[1]);
+    if (!isNaN(val)) return { amount: Number(val.toFixed(2)), currency: '$' };
   }
 
   return { amount: 0, currency: '$' };
@@ -149,7 +175,7 @@ export function extractAmountAndCurrency(text: string): { amount: number; curren
  */
 export function classifyCategory(text: string): StandardCategory {
   const normalized = text.toLowerCase();
-  
+
   for (const [category, patterns] of Object.entries(CATEGORY_RULES) as [StandardCategory, RegExp[]][]) {
     for (const pattern of patterns) {
       if (pattern.test(normalized)) {
@@ -186,10 +212,27 @@ export function extractMerchant(text: string): string {
 }
 
 /**
+ * Beneficiario de un pago enviado con Yape: "Yapeaste S/ 35.00 a JUAN PEREZ".
+ * El formato exacto del correo no esta verificado: se prueba con variantes.
+ */
+export function extractYapeRecipient(text: string): string | undefined {
+  const pattern =
+    /(?:yapeaste|enviaste|pagaste|transferiste)\s+(?:S\/\.?\s*[\d.,]+\s+)?(?:a|para)\s+([^\n.,;]{3,40}?)(?=\s*(?:\.|,|;|\n|$|nro|n°|operaci|con\s))/i;
+
+  const m = text.match(pattern);
+  if (m && m[1]) {
+    const name = m[1].trim();
+    if (name.length >= 3 && !/tarjeta|cuenta|banca/i.test(name)) return name;
+  }
+  return undefined;
+}
+
+/**
  * Detects if a notification is income or expense
  */
 export function detectTransactionType(text: string): TransactionType {
-  const incomeKeywords = /abono|dep[oó]sito|recibiste|transferencia recibida|sueldo|devoluci[oó]n|reembolso|acreditado/i;
+  const incomeKeywords =
+    /abono|dep[oó]sito|recibiste|transferencia recibida|pago recibido|te (?:yapearon|transfirieron|envi[oó])|sueldo|devoluci[oó]n|reembolso|acreditado|\bingreso\b/i;
   if (incomeKeywords.test(text)) {
     return 'income';
   }
@@ -251,7 +294,7 @@ export function parseBankEmail(
   dateISO?: string
 ): ParsedBankNotification {
   const fullText = `${subject} ${bodySnippet}`;
-  
+
   // Detect Bank Name: First prioritize sender match
   let bankName = 'Banca Móvil';
   for (const b of BANK_PATTERNS) {
@@ -282,8 +325,9 @@ export function parseBankEmail(
   }
 
   const { amount, currency } = extractAmountAndCurrency(fullText);
-  const merchant = extractMerchant(fullText);
   const type = detectTransactionType(fullText);
+  const recipient = bankName === 'Yape' ? extractYapeRecipient(fullText) : undefined;
+  const merchant = recipient ?? extractMerchant(fullText);
   const category = classifyCategory(`${merchant} ${fullText}`);
   const transportDetails = category === 'transporte' ? extractTransportRoute(fullText) : undefined;
 
@@ -313,12 +357,17 @@ export function parseBankEmail(
   };
 }
 
+/** Solo cuentan los cargos y pagos enviados: se descartan ingresos y montos vacios. */
+export function isOutgoingPayment(parsed: ParsedBankNotification): boolean {
+  return parsed.type === 'expense' && parsed.amount > 0;
+}
+
 /**
  * Converts a parsed bank notification into a full Transaction
  */
 export function createTransactionFromBankNotification(notif: ParsedBankNotification): Transaction {
   const id = `tx_bank_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  
+
   return {
     id,
     title: notif.merchant !== 'Comercio / Banca Móvil' ? notif.merchant : `${notif.bankName} - ${notif.category.toUpperCase()}`,
