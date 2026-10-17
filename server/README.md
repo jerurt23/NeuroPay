@@ -29,13 +29,14 @@ Todos requieren `Authorization: Bearer <idToken de Firebase>` salvo `/health`.
 
 ## Configuración
 
-1. Copia `.env.server.example` a `.env` y completa los valores.
+1. Los valores van en `.env`, en la carpeta del proyecto. Las claves de Firebase se leen de ese mismo archivo.
 2. En Google Cloud Console:
    - Habilita **Gmail API**.
    - Crea un cliente OAuth 2.0 de tipo **Aplicación web**.
    - En **Orígenes JavaScript autorizados** agrega `http://localhost:3000` y
      `https://neuropay-2fc4d.web.app`.
-   - Copia el ID y el secreto a `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+   - En **URIs de redirección autorizados** agrega también `http://localhost:3000`.
+   - Copia el ID en `VITE_GOOGLE_CLIENT_ID` y el secreto en `GOOGLE_CLIENT_SECRET`, en `.env`.
 3. Ejecuta `npm run server` (o `npm run server:start`).
 
 ## Seguridad

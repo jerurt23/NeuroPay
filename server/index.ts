@@ -74,8 +74,9 @@ app.use((req, res, next) => {
  * ------------------------------------------------------------------ */
 
 async function verifyFirebaseIdToken(idToken: string): Promise<string> {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const apiKey = process.env.FIREBASE_API_KEY;
+  // Si no se definen, se usan las mismas claves que el frontend (VITE_*).
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  const apiKey = process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY;
   if (!projectId || !apiKey) {
     throw new Error('El servidor no tiene FIREBASE_PROJECT_ID / FIREBASE_API_KEY.');
   }
@@ -255,12 +256,14 @@ app.listen(PORT, () => {
   console.log(`NEUROPAY Gmail backend en http://localhost:${PORT}`);
   console.log(`Orígenes permitidos: ${ALLOWED_ORIGINS.join(', ')}`);
   const missing = [
-    'FIREBASE_PROJECT_ID',
-    'FIREBASE_API_KEY',
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET',
-    'TOKEN_ENCRYPTION_KEY',
-  ].filter((k) => !process.env[k]);
+    ['Firebase (proyecto)', process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID],
+    ['Firebase (clave)', process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY],
+    ['VITE_GOOGLE_CLIENT_ID', process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID],
+    ['GOOGLE_CLIENT_SECRET', process.env.GOOGLE_CLIENT_SECRET],
+    ['TOKEN_ENCRYPTION_KEY', process.env.TOKEN_ENCRYPTION_KEY],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
   if (missing.length > 0) {
     console.warn(`⚠️  Faltan variables de entorno: ${missing.join(', ')}`);
   }
