@@ -1,276 +1,213 @@
 /**
- * ============================================================
- *  Gmail API - Configuracion y cliente
- * ============================================================
+ * Cliente del navegador para sincronizar con Gmail.
  *
- *  ⚠️  IMPORTANTE - LEE ESTO ANTES DE USAR
- * ============================================================
- *
- *  Tu app es una SPA (Vite). TODO lo que pongas en el frontend
- *  queda DENTRO del bundle JavaScript que se descarga del hosting.
- *  Puedes comprobarlo tu mismo:
- *
- *    https://neuropay-2fc4d.web.app/assets/index-XXXX.js
- *
- *  Ya ocurre con la config de Firebase: el bundle publico contiene
- *  "AIza...", "firebaseapp.com" y "neuropay-2fc4d".
- *
- *  Por eso NO se puede hacer aqui:
- *
- *    ✗ Poner el API key de Google en este archivo  -> queda expuesta
- *    ✗ Poner el refresh token en este archivo       -> SECUENCIA TOTAL
- *      Alguien podria iniciar sesion en tu Gmail, leer correos,
- *      enviar correos en tu nombre y resetear tu contrasena.
- *
- *  Que es un refresh token: es la credencial de larga duracion que
- *  Google entrega tras el login OAuth. Es lo mas sensible del flujo.
- *
- *  La unica forma segura es la separacion de responsabilidades:
- *
- *    ┌─────────────────────────────────────────────────┐
- *    │  FRONTEND (este archivo, bundle publico)       │
- *    │  Solo pide el login con Google (GIS popup)      │
- *    │  y envia un idToken a tu servidor               │
- *    └──────────────────┬──────────────────────────────┘
- *                       │ HTTPS (idToken, vida corta)
- *                       ▼
- *    ┌─────────────────────────────────────────────────┐
- *    │  BACKEND (servidor, NUNCA se publica)           │
- *    │  - valida el idToken                            │
- *    │  - guarda el refresh token cifrado en BD         │
- *    │  - llama a la Gmail API por ti                  │
- *    │  - devuelve solo los datos ya parseados         │
- *    └─────────────────────────────────────────────────┘
- *
- *  El API key de Google si puede ir en el backend (no en el
- *  frontend) y conviene restringirlo por IP y por API en la
- *  consola de Google Cloud.
- *
- * ============================================================
+ * El navegador solo pide permiso a Google y envia el codigo de autorizacion
+ * al servidor. Los tokens nunca llegan aqui.
  */
+import type { Transaction } from '../types/index.ts';
 
-/** Configuracion del backend que procesa los correos. */
 export const GMAIL_CONFIG = {
-  /** URL de tu backend. Debe ser HTTPS en produccion. */
-  backendUrl: (import.meta.env.VITE_GMAIL_BACKEND_URL as string) || '',
-
-  /** ID de cliente OAuth 2.0 de tipo Web (este si puede ir en el frontend). */
-  clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || '',
-
-  /**
-   * Origenes autorizados en la consola de Google.
-   * Debe incluir exactamente el dominio desde el que sirves la app.
-   */
-  authorizedOrigins: [
-    'http://localhost:3000',
-    'https://neuropay-2fc4d.web.app',
-  ],
-
-  /** Permisos solicitados. gmail.readonly: solo lectura. */
-  scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
-
-  /** Ventana de cache para no re-preguntar el consentimiento. */
-  cacheMaxAgeMs: 7 * 24 * 60 * 60 * 1000, // 7 dias
+  /** URL del servidor. Vacia = la funcion esta desactivada. */
+  backendUrl: (import.meta.env.VITE_GMAIL_BACKEND_URL as string | undefined) ?? '',
+  /** ID de cliente OAuth 2.0 tipo Web. Es publico, no un secreto. */
+  clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '',
+  scope: 'https://www.googleapis.com/auth/gmail.readonly',
+  maxAccounts: 5,
 } as const;
 
-/** Filtros de busqueda usados al pedir los correos al backend. */
-export const GMAIL_QUERIES = {
-  /** Notificaciones de bancos y fintechs longos. */
-  bankNotifications:
-    'from:(banco OR bbva OR bcp OR interconnect ORscotiabank OR bancolombia OR davivienda) newer_than:30d',
-
-  /** Cualquier correo con posible notificacion de gasto. */
-  allTransactions:
-    '(subject:(compra OR pago OR transaccion OR consumo) OR "notificacion de operacion") newer_than:7d',
-
-  /** Solo borradores pendientes de revisar. */
-  pending: 'is:unread newer_than:7d',
-} as const;
-
-export interface GmailMessage {
-  id: string;
-  threadId: string;
-  from: string;
-  subject: string;
-  snippet: string;
-  date: string;
-  // Datos ya parseados por el backend (mismo parser que usa la app)
-  bankName?: string;
-  merchant?: string;
-  amount?: number;
-  currency?: string;
-  category?: string;
-  type?: 'expense' | 'income';
-  confidence?: number;
-}
-
-export interface GmailSyncResult {
-  ok: boolean;
-  messages: GmailMessage[];
-  error?: string;
-}
-
-/** Indica si el backend esta configurado. */
 export function isGmailConfigured(): boolean {
   return Boolean(GMAIL_CONFIG.backendUrl && GMAIL_CONFIG.clientId);
 }
 
-/* ------------------------------------------------------------------
- *  Autenticacion
- * ------------------------------------------------------------------ */
+export interface GmailAccount {
+  id: string;
+  email: string;
+  addedAt: number;
+  lastSyncAt?: number;
+}
 
-/**
- * Abre el popup de Google Identity Services.
- *
- * NO guarda ningun token en el navegador: devuelve un idToken de vida
- * corta (~1 h) para canjearlo por sesion en tu backend.
- */
-export async function requestGoogleIdToken(): Promise<string> {
-  if (typeof window === 'undefined') throw new Error('Solo funciona en el navegador.');
+/** Aviso de salida de dinero encontrado en un correo, listo para revisar. */
+export interface GmailCandidate {
+  messageId: string;
+  accountId: string;
+  accountEmail: string;
+  bankName: string;
+  merchant: string;
+  amount: number;
+  currency: string;
+  category: string;
+  date: string;
+  subject: string;
+  confidence: number;
+}
+
+export interface GmailSyncError {
+  accountId: string;
+  email: string;
+  error: string;
+}
+
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+async function api<T>(path: string, idToken: string, init: RequestInit = {}): Promise<Result<T>> {
   if (!isGmailConfigured()) {
-    throw new Error('Gmail no esta configurado. Revisa VITE_GMAIL_BACKEND_URL y VITE_GOOGLE_CLIENT_ID.');
+    return { ok: false, error: 'La sincronización con Gmail no está configurada.' };
   }
-
-  const gis = await loadScript('https://accounts.google.com/gsi/client');
-  const client = (window as any).google.accounts.oauth2.initCodeClient({
-    client_id: GMAIL_CONFIG.clientId,
-    scope: GMAIL_CONFIG.scopes.join(' '),
-    callback: (resp: any) => {
-      (window as any).__neuropayGmailCallback?.(resp);
-    },
-  });
-
-  return new Promise<string>((resolve, reject) => {
-    (window as any).__neuropayGmailCallback = (resp: any) => {
-      delete (window as any).__neuropayGmailCallback;
-      if (resp?.error) return reject(new Error(resp.error));
-      if (!resp?.code) return reject(new Error('No se obtuvo autorizacion de Google.'));
-      // Se envia el "code" al backend, que lo canjea por tokens.
-      resolve(resp.code);
-    };
-    client.requestAccessToken();
-  });
-}
-
-/* ------------------------------------------------------------------
- *  Sincronizacion
- * ------------------------------------------------------------------ */
-
-/** URL del backend sin barra final. */
-function api(path: string): string {
-  return `${GMAIL_CONFIG.backendUrl.replace(/\/$/, '')}${path}`;
-}
-
-/**
- * Pide al backend los correos y devuelve los ya normalizados.
- * El backend es el unico que habla con la Gmail API.
- *
- * @param authorizationCode code devuelto por Google Identity Services
- * @param idToken token de Firebase del usuario (para que el backend sepa quien eres)
- */
-export async function syncBankEmails(
-  authorizationCode: string,
-  idToken: string,
-  email?: string,
-  query: string = GMAIL_QUERIES.bankNotifications
-): Promise<GmailSyncResult> {
-  if (!GMAIL_CONFIG.backendUrl) {
-    return { ok: false, messages: [], error: 'Backend no configurado.' };
-  }
-
   try {
-    const res = await fetch(api('/gmail/sync'), {
-      method: 'POST',
+    const res = await fetch(`${GMAIL_CONFIG.backendUrl.replace(/\/$/, '')}${path}`, {
+      ...init,
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${idToken}`,
       },
-      body: JSON.stringify({ code: authorizationCode, email, query }),
     });
-
     const data = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, messages: [], error: data?.error || `El servidor respondio ${res.status}.` };
+      return { ok: false, error: data?.error ?? `El servidor respondió ${res.status}.` };
     }
-    return data as GmailSyncResult;
-  } catch (e: any) {
-    return { ok: false, messages: [], error: e?.message || 'No se pudo conectar con el servidor.' };
+    return { ok: true, data: data as T };
+  } catch {
+    return { ok: false, error: 'No se pudo conectar con el servidor de Gmail.' };
   }
+}
+
+/* ---------- Google Identity Services ---------- */
+
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+
+interface CodeResponse {
+  code?: string;
+  error?: string;
+}
+
+interface CodeClient {
+  requestCode(): void;
+}
+
+interface GoogleGlobal {
+  accounts: {
+    oauth2: {
+      initCodeClient(config: {
+        client_id: string;
+        scope: string;
+        ux_mode?: 'popup' | 'redirect';
+        select_account?: boolean;
+        callback: (response: CodeResponse) => void;
+        error_callback?: (error: { type: string }) => void;
+      }): CodeClient;
+    };
+  };
+}
+
+let gisPromise: Promise<GoogleGlobal> | null = null;
+
+function loadGis(): Promise<GoogleGlobal> {
+  if (!gisPromise) {
+    gisPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = GIS_SRC;
+      script.async = true;
+      script.onload = () => {
+        const g = (window as unknown as { google?: GoogleGlobal }).google;
+        if (g?.accounts?.oauth2) resolve(g);
+        else {
+          gisPromise = null;
+          reject(new Error('No se pudo iniciar Google.'));
+        }
+      };
+      script.onerror = () => {
+        gisPromise = null;
+        reject(new Error('No se pudo cargar Google. Revisa tu conexión.'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return gisPromise;
 }
 
 /**
- * Sincroniza con la sesion ya guardada en el backend, sin volver a
- * mostrar el popup de Google.
+ * Abre la ventana de Google para autorizar UNA cuenta.
+ * Devuelve el codigo de autorizacion, nunca tokens.
  */
-export async function refreshBankEmails(
-  idToken: string,
-  query: string = GMAIL_QUERIES.bankNotifications
-): Promise<GmailSyncResult> {
-  if (!GMAIL_CONFIG.backendUrl) {
-    return { ok: false, messages: [], error: 'Backend no configurado.' };
-  }
-  try {
-    const res = await fetch(api('/gmail/refresh'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-      body: JSON.stringify({ query }),
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, messages: [], error: data?.error || `Error ${res.status}.` };
-    return data as GmailSyncResult;
-  } catch (e: any) {
-    return { ok: false, messages: [], error: e?.message };
-  }
-}
-
-/**
- * Revisa si el usuario ya autorizo antes, sin volver a mostrar el popup.
- * OJO: esto consulta al backend si hay sesion activa. No guarda tokens
- * en el navegador.
- */
-export async function checkGmailSession(idToken: string): Promise<boolean> {
-  if (!GMAIL_CONFIG.backendUrl || !idToken) return false;
-  try {
-    const res = await fetch(api('/gmail/session'), {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return Boolean(data?.active);
-  } catch {
-    return false;
-  }
-}
-
-/** Cierra la sesion de Gmail en el backend. */
-export async function disconnectGmail(idToken: string): Promise<boolean> {
-  if (!GMAIL_CONFIG.backendUrl || !idToken) return false;
-  try {
-    const res = await fetch(api('/gmail/session'), {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-/* ------------------------------------------------------------------
- *  Utilidades
- * ------------------------------------------------------------------ */
-
-function loadScript(src: string): Promise<void> {
+export async function requestAuthCode(): Promise<{ code: string; redirectUri: string }> {
+  const google = await loadGis();
   return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) return resolve();
-    const s = document.createElement('script');
-    s.src = src;
-    s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('No se pudo cargar Google Identity Services.'));
-    document.head.appendChild(s);
+    const client = google.accounts.oauth2.initCodeClient({
+      client_id: GMAIL_CONFIG.clientId,
+      scope: GMAIL_CONFIG.scope,
+      ux_mode: 'popup',
+      select_account: true,
+      callback: (response) => {
+        if (response.error) {
+          reject(new Error(`Google no autorizó la cuenta (${response.error}).`));
+          return;
+        }
+        if (!response.code) {
+          reject(new Error('Google no devolvió el código de autorización.'));
+          return;
+        }
+        // En modo popup, Google usa el origen de la pagina como redirect_uri.
+        resolve({ code: response.code, redirectUri: window.location.origin });
+      },
+      error_callback: (error) =>
+        reject(
+          new Error(
+            error.type === 'popup_closed'
+              ? 'Cerraste la ventana de Google antes de terminar.'
+              : 'No se pudo abrir la ventana de Google. Revisa si el navegador bloqueó la ventana emergente.'
+          )
+        ),
+    });
+    client.requestCode();
   });
+}
+
+/* ---------- Servidor ---------- */
+
+export function listGmailAccounts(idToken: string) {
+  return api<{ accounts: GmailAccount[]; max: number }>('/gmail/accounts', idToken);
+}
+
+export function addGmailAccount(code: string, redirectUri: string, idToken: string) {
+  return api<{ account: GmailAccount; created: boolean }>('/gmail/accounts', idToken, {
+    method: 'POST',
+    body: JSON.stringify({ code, redirectUri }),
+  });
+}
+
+export function removeGmailAccount(id: string, idToken: string) {
+  return api<{ ok: boolean }>(`/gmail/accounts/${encodeURIComponent(id)}`, idToken, { method: 'DELETE' });
+}
+
+export function syncGmailAccounts(idToken: string) {
+  return api<{ candidates: GmailCandidate[]; errors: GmailSyncError[] }>('/gmail/sync', idToken, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+/** Convierte un aviso aceptado en un movimiento del dashboard. */
+export function candidateToTransaction(c: GmailCandidate): Transaction {
+  return {
+    id: `tx_gmail_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    title: c.merchant,
+    amount: c.amount,
+    type: 'expense',
+    category: c.category,
+    date: c.date,
+    time: new Date().toTimeString().slice(0, 5),
+    paymentMethod: 'banca_movil',
+    notes: `Aviso de ${c.bankName} en ${c.accountEmail} (${c.currency} ${c.amount.toFixed(2)}). Asunto: "${c.subject}"`,
+    tags: ['banca-movil', 'gmail', c.bankName.toLowerCase().replace(/\s+/g, '-')],
+    bankSyncMeta: {
+      bankName: c.bankName,
+      emailSender: c.accountEmail,
+      rawSnippet: c.subject,
+      syncedAt: new Date().toISOString(),
+      autoImported: false,
+      gmailMessageId: c.messageId,
+      accountEmail: c.accountEmail,
+    },
+    synapseWeight: Math.min(100, Math.max(10, Math.round(c.amount * 1.5))),
+  };
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Layers, PieChart, Coins, User, Trash2 } from 'lucide-react';
+import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Layers, PieChart, Coins, User, Trash2, Mail } from 'lucide-react';
 import { UserSettings, Transaction, CategoryInfo } from '../types/index.ts';
+import { GmailSyncPanel } from './GmailSyncPanel.tsx';
 
 interface ProfileModalProps {
   open: boolean;
@@ -13,6 +14,9 @@ interface ProfileModalProps {
   onChangePassword: (oldP: string, newP: string) => boolean;
   onDeleteCustomCategory?: (id: string, deriveTo?: string) => void;
   onLogout: () => void;
+  /** Token de Firebase del usuario, para hablar con el servidor de Gmail. */
+  getIdToken: () => Promise<string>;
+  onImportTransactions: (txs: Transaction[]) => void;
 }
 
 const COUNTRY_CURRENCIES = [
@@ -25,7 +29,7 @@ const COUNTRY_CURRENCIES = [
   { code: 'CO', name: 'Colombia', symbol: 'COL$' },
 ];
 
-type Section = 'chart' | 'currency' | 'account' | 'theme';
+type Section = 'chart' | 'currency' | 'account' | 'gmail' | 'theme';
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
   open,
@@ -38,6 +42,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onChangePassword,
   onDeleteCustomCategory,
   onLogout,
+  getIdToken,
+  onImportTransactions,
 }) => {
   const [name, setName] = useState(settings.userName || '');
   const [email, setEmail] = useState(settings.userEmail || '');
@@ -238,6 +244,30 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <span className="font-bold">{c.symbol}</span>
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sincronizar con correo */}
+          <div className="rounded-xl border border-line overflow-hidden mt-2">
+            <button
+              type="button"
+              onClick={() => toggleSection('gmail')}
+              className="w-full flex items-center justify-between p-3 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-rose-500" />
+                <span className="text-sm font-medium text-main">Sincronizar con correo</span>
+              </div>
+              {openSections.has('gmail') ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+            </button>
+            {openSections.has('gmail') && (
+              <div className="px-3 pb-3 border-t border-zinc-100 pt-3">
+                <GmailSyncPanel
+                  getIdToken={getIdToken}
+                  transactions={transactions}
+                  onImport={onImportTransactions}
+                />
               </div>
             )}
           </div>

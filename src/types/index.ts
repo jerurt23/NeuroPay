@@ -37,6 +37,9 @@ export interface BankSyncMeta {
   rawSnippet: string;
   syncedAt: string;
   autoImported: boolean;
+  /** Identificador del correo de Gmail (cuenta + id), para no importarlo dos veces. */
+  gmailMessageId?: string;
+  accountEmail?: string;
 }
 
 export interface Transaction {
