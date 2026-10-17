@@ -149,7 +149,7 @@ export const GmailSyncPanel: React.FC<GmailSyncPanelProps> = ({ getIdToken, tran
         <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p>
           La sincronización con Gmail todavía no está activa. Falta configurar el servidor
-          (<code>VITE_GMAIL_BACKEND_URL</code>) y el ID de Google (<code>VITE_GOOGLE_CLIENT_ID</code>).
+          (<code>VITE_API_URL</code>) y el ID de Google (<code>VITE_GOOGLE_CLIENT_ID</code>).
         </p>
       </div>
     );

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Política de privacidad · NEUROPAY</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; line-height: 1.6; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.15rem; margin-top: 2rem; }
+    .fecha { color: #6b7280; margin-top: 0; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <main>
+    <p><a href="/">← Volver a NEUROPAY</a></p>
+    <h1>Política de privacidad</h1>
+    <p class="fecha">Última actualización: 17 de octubre de 2026</p>
+    <p>Esta política explica qué datos trata NEUROPAY (by Urteagaholding), para qué los usa y cómo puedes controlarlos. Contacto: <a href="mailto:jeremyurteaga23@gmail.com">jeremyurteaga23@gmail.com</a>.</p>
+
+    <h2>1. Qué es NEUROPAY</h2>
+    <p>NEUROPAY es una herramienta personal para registrar gastos e ingresos y ver tus finanzas. No es un banco, no mueve dinero y no tiene relación con Yape, BCP ni Google.</p>
+
+    <h2>2. Qué datos tratamos</h2>
+    <ul>
+      <li><strong>Cuenta:</strong> tu correo y tu nombre, que Google confirma cuando entras con tu cuenta de Google. NEUROPAY no recibe ni guarda tu contraseña de Google.</li>
+      <li><strong>Movimientos y configuración:</strong> montos, categorías, fechas, descripciones, presupuestos, pestañas y preferencias que registras. Se guardan en el almacenamiento de tu navegador (localStorage e IndexedDB) y en nuestra base de datos (MongoDB Atlas), asociados a tu cuenta, para que los veas en otros dispositivos.</li>
+    </ul>
+
+    <h2>3. Sincronización con Gmail (opcional)</h2>
+    <p>Por ahora, esta función está habilitada solo para cuentas autorizadas por el operador. Si conectas una cuenta de Gmail, NEUROPAY pide un permiso de solo lectura (<code>gmail.readonly</code>) y busca únicamente los correos que llegan desde <strong>notificaciones@yape.pe</strong> y <strong>notificaciones@notificacionesbcp.com.pe</strong> de los últimos 30 días.</p>
+    <ul>
+      <li>De cada aviso de salida de dinero se extraen: banco, comercio o destinatario, monto, moneda, fecha, categoría sugerida, el correo de la cuenta conectada, el asunto del correo y su identificador, para no importar el mismo aviso dos veces.</li>
+      <li>Los avisos aparecen como sugerencias. Ningún movimiento se importa sin tu confirmación.</li>
+      <li>El contenido completo de tus correos no se guarda. Se procesa en memoria y solo se devuelven los campos anteriores.</li>
+      <li>Al importar un movimiento, el asunto del aviso y el correo de la cuenta quedan en sus notas, en tu navegador y en nuestra base de datos.</li>
+      <li>En nuestra base de datos se guardan también el correo de la cuenta conectada, las fechas de conexión y de última sincronización, y el token de acceso de Google, cifrado.</li>
+    </ul>
+
+    <h2>4. Uso de la información de Google</h2>
+    <p>NEUROPAY usa la información que recibe de Google solo para mostrarte avisos de salida de dinero y permitir que los registres. No la usamos para publicidad, no la vendemos, no la usamos para entrenar modelos de inteligencia artificial y no la transferimos a terceros, salvo a los proveedores de la sección 5. El procesamiento es automático: ninguna persona revisa el contenido de tus correos.</p>
+    <p>El uso que NEUROPAY hace de la información recibida de las API de Google se ajusta a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Política de datos de usuario de los Servicios de API de Google</a>, incluidos los requisitos de Uso Limitado.</p>
+
+    <h2>5. Proveedores que procesan datos</h2>
+    <ul>
+      <li><strong>Google:</strong> inicio de sesión con Google y Gmail API.</li>
+      <li><strong>Firebase Hosting:</strong> publica esta web.</li>
+      <li><strong>Render:</strong> aloja el servidor (API) que gestiona tu sesión y consulta Gmail.</li>
+      <li><strong>MongoDB Atlas:</strong> guarda tu cuenta, tus sesiones, tus movimientos y las cuentas de Gmail conectadas.</li>
+    </ul>
+    <p>Estos servicios pueden procesar datos en servidores fuera del Perú.</p>
+
+    <h2>6. Seguridad</h2>
+    <ul>
+      <li>La comunicación con la web y con el servidor usa HTTPS.</li>
+      <li>Los tokens de Gmail se cifran con AES-256-GCM. La clave de cifrado se guarda fuera de la base de datos.</li>
+      <li>Cada petición a la API exige una sesión válida. En la base de datos solo se guarda una huella del token de sesión, no el token.</li>
+      <li>Cada usuario solo puede leer y modificar sus propios datos.</li>
+    </ul>
+    <p>Ningún sistema es totalmente seguro, pero aplicamos estas medidas para proteger tu información.</p>
+
+    <h2>7. Cuánto tiempo guardamos los datos</h2>
+    <ul>
+      <li><strong>Cuentas de Gmail:</strong> mientras estén conectadas. Al quitar una cuenta en NEUROPAY se borra su token de nuestra base de datos. Los movimientos ya importados se quedan hasta que los borres tú.</li>
+      <li><strong>Movimientos y configuración:</strong> hasta que los borres o pidas su eliminación. También puedes borrar los datos del navegador en cualquier momento.</li>
+      <li><strong>Sesiones:</strong> hasta 30 días. Después caducan y se borran.</li>
+      <li><strong>Cuenta:</strong> hasta que pidas su eliminación.</li>
+    </ul>
+
+    <h2>8. Tus derechos</h2>
+    <p>Puedes pedir acceso, corrección, cancelación u oposición al tratamiento de tus datos, según la Ley N.° 29733, Ley de Protección de Datos Personales del Perú. Escribe a <a href="mailto:jeremyurteaga23@gmail.com">jeremyurteaga23@gmail.com</a>.</p>
+    <p>Para quitar el acceso a Gmail, elimina la cuenta en NEUROPAY (Perfil → Sincronizar con correo). Para revocar también el permiso en Google, entra a <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</p>
+
+    <h2>9. Menores de edad</h2>
+    <p>NEUROPAY no está dirigido a menores de edad.</p>
+
+    <h2>10. Cambios en esta política</h2>
+    <p>Si cambiamos esta política, publicaremos la versión nueva en esta página con su fecha de actualización.</p>
+
+    <p><a href="/terminos.html">Condiciones del servicio</a></p>
+  </main>
+</body>
+</html>

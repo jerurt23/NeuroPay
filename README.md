@@ -11,7 +11,7 @@ Proyecto en construcción.
 | Ruta | Contenido |
 |------|-----------|
 | `src/components` | Vistas y componentes de la interfaz |
-| `src/lib` | Firebase, base de datos local y cliente Gmail |
+| `src/lib` | Sesión, base de datos local y cliente de la API |
 | `src/utils` | Parser de correos bancarios y cálculos |
 | `src/data` | Datos iniciales y configuración por defecto |
 | `server` | Backend de la Gmail API (nunca se publica) |
@@ -22,12 +22,12 @@ Proyecto en construcción.
 npm run dev           # desarrollo en localhost:3000
 npm run build         # genera dist/
 npm run lint          # comprobacion de tipos
-npm run server        # backend Gmail en localhost:8787
+npm run server        # API de NEUROPAY en localhost:8787
 ```
 
 ## Datos
 
 La app guarda los datos en el navegador (localStorage como fuente
-principal, IndexedDB como respaldo). La base de datos en la nube
-requiere billing en Firebase; sin él, el backend sigue funcionando con
-el almacenamiento local.
+principal, IndexedDB como respaldo). Al entrar con Google, además, los
+guarda en MongoDB Atlas a través de la API (`server/`), para verlos en
+otros dispositivos. La web se publica en Firebase Hosting.

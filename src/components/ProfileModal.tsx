@@ -14,7 +14,7 @@ interface ProfileModalProps {
   onChangePassword: (oldP: string, newP: string) => boolean;
   onDeleteCustomCategory?: (id: string, deriveTo?: string) => void;
   onLogout: () => void;
-  /** Token de Firebase del usuario, para hablar con el servidor de Gmail. */
+  /** Token de sesión de NEUROPAY, para hablar con el servidor. */
   getIdToken: () => Promise<string>;
   onImportTransactions: (txs: Transaction[]) => void;
 }

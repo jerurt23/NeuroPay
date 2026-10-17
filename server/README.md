@@ -1,36 +1,33 @@
-# Servidor Gmail de NEUROPAY
+# Servidor de NEUROPAY (API)
 
-Lee los avisos de salida de dinero de Yape y BCP en hasta 5 cuentas de Gmail
-por usuario. El navegador nunca recibe tokens: solo la lista de cuentas
-(correo y fechas) y los avisos ya interpretados.
+La API de NEUROPAY: inicio de sesión con Google, datos del usuario y sincronización con Gmail. Todo se guarda en MongoDB Atlas. La web sigue en Firebase Hosting.
 
 ## Dónde corre
 
 - **En tu PC** (`npm run server`), para desarrollar.
-- **En Render** (plan gratis), para la web. La configuración está en `render.yaml`.
+- **En Render** (plan gratis), servicio `neuropay-api`. La configuración está en `render.yaml`.
 
-Las cuentas se guardan cifradas en **MongoDB Atlas** (plan M0, gratis), así que
-no se pierden cuando Render reinicia el servicio.
+Las cuentas de Gmail, las sesiones y los datos se guardan cifrados en **MongoDB Atlas** (plan M0, gratis), así que no se pierden cuando Render reinicia el servicio.
 
-## Flujo
+## Inicio de sesión
 
-1. El usuario pulsa "Agregar cuenta" en Perfil → Sincronizar con correo.
-2. El navegador abre el popup de Google y obtiene un **código de autorización**.
-3. El servidor canjea el código por tokens, guarda el refresh token **cifrado**
-   y deja la cuenta asociada al usuario de Firebase.
-4. "Buscar avisos" lee los correos de `notificaciones@yape.pe` y
-   `notificaciones@notificacionesbcp.com.pe` de los últimos 30 días.
-5. Cada aviso de salida de dinero vuelve como sugerencia. Solo se importa lo
-   que el usuario confirma.
+1. Entras con tu cuenta de Google en la web. Google confirma tu correo.
+2. El servidor verifica esa confirmación y revisa que tu correo esté en `ALLOWED_EMAILS`.
+3. Si todo está bien, abre una sesión de NEUROPAY (30 días). El navegador guarda solo ese token; en la base de datos solo se guarda su huella.
 
 ## Endpoints
 
-Todos requieren `Authorization: Bearer <idToken de Firebase>` salvo `/health`.
+Salvo `/health`, `/auth/google` y `/auth/logout`, todos requieren `Authorization: Bearer <token de sesión>`.
 
 | Método | Ruta | Qué hace |
 |---|---|---|
 | GET | `/health` | Estado del servidor |
-| GET | `/gmail/accounts` | Cuentas conectadas (sin tokens) |
+| POST | `/auth/google` | Cambia la confirmación de Google por una sesión. Body: `{ idToken }` |
+| POST | `/auth/logout` | Cierra la sesión |
+| GET | `/me` | Usuario de la sesión |
+| GET | `/data` | Movimientos, presupuestos y configuración guardados |
+| PUT | `/data` | Guarda movimientos, presupuestos y configuración |
+| GET | `/gmail/accounts` | Cuentas de Gmail conectadas (sin tokens) |
 | POST | `/gmail/accounts` | Conecta una cuenta. Body: `{ code, redirectUri }` |
 | DELETE | `/gmail/accounts/:id` | Quita una cuenta |
 | POST | `/gmail/sync` | Busca avisos en todas las cuentas |
@@ -39,54 +36,39 @@ Todos requieren `Authorization: Bearer <idToken de Firebase>` salvo `/health`.
 
 1. Copia `.env.server.example` a `.env` y completa los valores. `.env` no se sube a git.
 2. **MongoDB Atlas:**
-   - Crea un cluster M0 (gratis).
-   - En *Database Access*, crea un usuario con contraseña.
-   - En *Network Access*, permite el acceso desde cualquier IP (`0.0.0.0/0`).
-     Render gratis cambia de IP, por eso hace falta. La base sigue protegida por usuario y contraseña.
-   - En *Connect → Drivers*, copia la cadena `mongodb+srv://...` en `MONGODB_URI`
-     y reemplaza `<password>` por la contraseña del usuario.
+   - Crea un cluster M0 (gratis) y un usuario con contraseña.
+   - En *Network Access*, permite el acceso desde cualquier IP (`0.0.0.0/0`). Render gratis cambia de IP; la base sigue protegida por usuario y contraseña.
+   - En *Connect → Drivers*, copia la cadena `mongodb+srv://...` en `MONGODB_URI`.
 3. **Google Cloud Console:**
-   - Habilita **Gmail API**.
-   - Crea un cliente OAuth 2.0 de tipo **Aplicación web**.
-   - En **Orígenes JavaScript autorizados** agrega `http://localhost:3000` y
-     `https://neuropay-2fc4d.web.app`.
-   - En **URIs de redirección autorizados** agrega también `http://localhost:3000`.
-   - Copia el ID en `VITE_GOOGLE_CLIENT_ID` y el secreto en `GOOGLE_CLIENT_SECRET`, en `.env`.
-   - En **Público** (pantalla de consentimiento), pulsa **Publicar aplicación** (En producción).
-     En modo Prueba, el permiso de Gmail caduca cada 7 días.
-4. Ejecuta `npm run server` (o `npm run server:start`).
+   - Habilita **Gmail API** en el proyecto.
+   - En tu cliente OAuth tipo *Aplicación web*, agrega en *Orígenes JavaScript autorizados* `http://localhost:3000` y `https://neuropay-2fc4d.web.app`, y en *URIs de redirección autorizados* los mismos dos.
+   - Copia el ID en `GOOGLE_CLIENT_ID` (y en `VITE_GOOGLE_CLIENT_ID` del frontend) y el secreto en `GOOGLE_CLIENT_SECRET`.
+4. Ejecuta `npm run server`. En otra terminal, `npm run dev`.
 
 ## Render
 
 1. En render.com, crea un **Blueprint** con este repositorio. El plan gratis no pide tarjeta.
-2. Render pedirá los valores marcados en `render.yaml`: `FIREBASE_API_KEY`,
-   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`,
-   `MONGODB_URI` y `GMAIL_ALLOWED_EMAILS`. Son los mismos de tu `.env`.
+2. Render pedirá estos valores: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `MONGODB_URI` y `ALLOWED_EMAILS`. Son los mismos de tu `.env`.
 3. El servicio responde en `https://<nombre>.onrender.com/health`.
 
-El plan gratis se duerme tras 15 minutos sin uso; la primera petición tarda
-cerca de un minuto. Un plan de pago elimina la espera.
+En el plan gratis, el servidor se duerme tras 15 minutos sin uso. La primera petición después tarda cerca de un minuto.
 
 ## Seguridad
 
-- Límite de 5 cuentas por usuario, validado en el servidor.
-- Solo pueden usar Gmail los correos de `GMAIL_ALLOWED_EMAILS`.
-- Refresh tokens cifrados con AES-256-GCM. En la base de datos no hay tokens en claro.
-- Si cambias `TOKEN_ENCRYPTION_KEY`, las cuentas conectadas dejan de funcionar y hay que reconectarlas.
-- Los correos se leen en memoria: solo se devuelven los campos interpretados.
-- Permiso mínimo: `gmail.readonly`.
-
-## Antes de usarlo de verdad
-
-- **Formato de los avisos:** el parser de Yape y BCP todavía no se ha validado
-  con correos reales. Conviene probar con un aviso verdadero antes de confiar en
-  el beneficiario y el monto.
+- Solo los correos de `ALLOWED_EMAILS` pueden entrar y usar Gmail.
+- Un correo de Google sin verificar no entra.
+- Tokens de Gmail cifrados con AES-256-GCM.
+- Sesiones con huella SHA-256; caducan a los 30 días.
+- Cada usuario solo accede a sus propios datos.
 
 ## Pruebas
 
 ```bash
-npx tsx server/test-backend.ts                # almacen de cuentas y lectura de correos
-npm run test:mongo                            # prueba real contra MongoDB (necesita MONGODB_URI)
-npx tsx server/test-dashboard-measures.ts
-npx tsx --test src/utils/bankEmailParser.test.ts src/utils/bankEmailParser.senders.test.ts
+npx tsx server/test-backend.ts   # almacén de cuentas y lectura de correos
+npm run test:mongo               # almacén de cuentas contra MongoDB (requiere MONGODB_URI)
+npm run test:flow                # flujo completo contra MongoDB (requiere MONGODB_URI)
 ```
+
+## Pendiente
+
+- El parser de avisos de Yape y BCP todavía no se ha validado con correos reales.

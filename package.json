@@ -11,14 +11,15 @@
     "lint": "tsc --noEmit",
     "server": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
-    "test:mongo": "tsx server/test-mongo-live.ts"
+    "test:mongo": "tsx server/test-mongo-live.ts",
+    "test:flow": "tsx server/test-flow.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
-    "firebase": "^11.0.0",
+    "google-auth-library": "^11.3.1",
     "lucide-react": "^0.546.0",
     "mongodb": "^7.7.0",
     "motion": "^12.23.24",

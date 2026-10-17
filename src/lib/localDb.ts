@@ -137,6 +137,29 @@ export async function saveLocalData(data: LocalUserData): Promise<void> {
   await writeIDB(payload);
 }
 
+/**
+ * Busca datos guardados con otro identificador (la cuenta de Firebase anterior)
+ * y los copia a la cuenta nueva. Solo actúa si hay exactamente un candidato.
+ */
+export async function findLegacyLocalData(userId: string): Promise<LocalUserData | null> {
+  const candidatos: LocalUserData[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(LS_PREFIX) || key === LS_PREFIX + userId) continue;
+      const data = readLocalStorage(key.slice(LS_PREFIX.length));
+      if (data) candidatos.push(data);
+    }
+  } catch {
+    return null;
+  }
+  if (candidatos.length !== 1) return null;
+
+  const migrado: LocalUserData = { ...candidatos[0], id: userId };
+  await saveLocalData(migrado);
+  return migrado;
+}
+
 /** Borra los datos del usuario (usar con cuidado). */
 export async function clearLocalData(userId: string): Promise<void> {
   try {

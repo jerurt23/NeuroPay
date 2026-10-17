@@ -1,15 +1,16 @@
 /**
  * Cliente del navegador para sincronizar con Gmail.
  *
- * El navegador solo pide permiso a Google y envia el codigo de autorizacion
- * al servidor. Los tokens nunca llegan aqui.
+ * El navegador solo pide permiso a Google y envía el código de autorización
+ * a la API de NEUROPAY. Los tokens de Gmail nunca llegan aquí.
  */
 import type { Transaction } from '../types/index.ts';
+import { whenGoogle } from './googleScript';
 
 export const GMAIL_CONFIG = {
-  /** URL del servidor. Vacia = la funcion esta desactivada. */
-  backendUrl: (import.meta.env.VITE_GMAIL_BACKEND_URL as string | undefined) ?? '',
-  /** ID de cliente OAuth 2.0 tipo Web. Es publico, no un secreto. */
+  /** URL de la API de NEUROPAY. Vacía = la función está desactivada. */
+  backendUrl: (import.meta.env.VITE_API_URL as string | undefined) ?? '',
+  /** ID de cliente OAuth 2.0 tipo Web. Es público, no un secreto. */
   clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '',
   scope: 'https://www.googleapis.com/auth/gmail.readonly',
   maxAccounts: 5,
@@ -49,7 +50,7 @@ export interface GmailSyncError {
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
-async function api<T>(path: string, idToken: string, init: RequestInit = {}): Promise<Result<T>> {
+async function api<T>(path: string, token: string, init: RequestInit = {}): Promise<Result<T>> {
   if (!isGmailConfigured()) {
     return { ok: false, error: 'La sincronización con Gmail no está configurada.' };
   }
@@ -58,7 +59,7 @@ async function api<T>(path: string, idToken: string, init: RequestInit = {}): Pr
       ...init,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${idToken}`,
+        Authorization: `Bearer ${token}`,
       },
     });
     const data = await res.json().catch(() => null);
@@ -72,8 +73,6 @@ async function api<T>(path: string, idToken: string, init: RequestInit = {}): Pr
 }
 
 /* ---------- Google Identity Services ---------- */
-
-const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
 interface CodeResponse {
   code?: string;
@@ -99,30 +98,9 @@ interface GoogleGlobal {
   };
 }
 
-let gisPromise: Promise<GoogleGlobal> | null = null;
-
-function loadGis(): Promise<GoogleGlobal> {
-  if (!gisPromise) {
-    gisPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = GIS_SRC;
-      script.async = true;
-      script.onload = () => {
-        const g = (window as unknown as { google?: GoogleGlobal }).google;
-        if (g?.accounts?.oauth2) resolve(g);
-        else {
-          gisPromise = null;
-          reject(new Error('No se pudo iniciar Google.'));
-        }
-      };
-      script.onerror = () => {
-        gisPromise = null;
-        reject(new Error('No se pudo cargar Google. Revisa tu conexión.'));
-      };
-      document.head.appendChild(script);
-    });
-  }
-  return gisPromise;
+async function loadGis(): Promise<GoogleGlobal> {
+  await whenGoogle('oauth2');
+  return (window as unknown as { google: GoogleGlobal }).google;
 }
 
 /**
@@ -164,23 +142,23 @@ export async function requestAuthCode(): Promise<{ code: string; redirectUri: st
 
 /* ---------- Servidor ---------- */
 
-export function listGmailAccounts(idToken: string) {
-  return api<{ accounts: GmailAccount[]; max: number }>('/gmail/accounts', idToken);
+export function listGmailAccounts(token: string) {
+  return api<{ accounts: GmailAccount[]; max: number }>('/gmail/accounts', token);
 }
 
-export function addGmailAccount(code: string, redirectUri: string, idToken: string) {
-  return api<{ account: GmailAccount; created: boolean }>('/gmail/accounts', idToken, {
+export function addGmailAccount(code: string, redirectUri: string, token: string) {
+  return api<{ account: GmailAccount; created: boolean }>('/gmail/accounts', token, {
     method: 'POST',
     body: JSON.stringify({ code, redirectUri }),
   });
 }
 
-export function removeGmailAccount(id: string, idToken: string) {
-  return api<{ ok: boolean }>(`/gmail/accounts/${encodeURIComponent(id)}`, idToken, { method: 'DELETE' });
+export function removeGmailAccount(id: string, token: string) {
+  return api<{ ok: boolean }>(`/gmail/accounts/${encodeURIComponent(id)}`, token, { method: 'DELETE' });
 }
 
-export function syncGmailAccounts(idToken: string) {
-  return api<{ candidates: GmailCandidate[]; errors: GmailSyncError[] }>('/gmail/sync', idToken, {
+export function syncGmailAccounts(token: string) {
+  return api<{ candidates: GmailCandidate[]; errors: GmailSyncError[] }>('/gmail/sync', token, {
     method: 'POST',
     body: JSON.stringify({}),
   });

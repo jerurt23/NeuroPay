@@ -1,7 +1,8 @@
 /**
- * Rutas del servidor de Gmail (server/index.ts).
+ * Rutas de NEUROPAY: inicio de sesión con Google, datos del usuario y Gmail.
+ * Las usa el servidor (server/index.ts), en tu PC o en Render.
  *
- * Nunca devuelve tokens ni el contenido completo de los correos.
+ * Nunca devuelve tokens de Gmail ni el contenido completo de los correos.
  */
 import express from 'express';
 import {
@@ -20,15 +21,14 @@ import {
   fetchMessages,
 } from './gmailClient.ts';
 import { parseBankEmail, isOutgoingPayment } from '../src/utils/bankEmailParser.ts';
-
-export interface AuthUser {
-  uid: string;
-  email?: string;
-}
+import type { GoogleIdentity, SessionStore, SessionUser } from './session.ts';
+import { parseUserState, type UserDataStore } from './userData.ts';
 
 export interface AppOptions {
   store: AccountStore;
-  verifyToken: (idToken: string) => Promise<AuthUser>;
+  sessions: SessionStore;
+  userData: UserDataStore;
+  verifyGoogleIdToken: (idToken: string) => Promise<GoogleIdentity>;
   allowedOrigins: string[];
   allowedEmails: string[];
 }
@@ -39,12 +39,17 @@ const LOOKBACK_DAYS = 30;
 const MAX_MESSAGES_PER_ACCOUNT = 25;
 const ACCOUNT_ID = /^[0-9a-f-]{36}$/i;
 
+function bearerToken(req: express.Request): string {
+  const header = req.headers.authorization || '';
+  return header.startsWith('Bearer ') ? header.slice(7) : '';
+}
+
 export function createApp(opts: AppOptions): express.Express {
   const app = express();
 
-  app.use(express.json({ limit: '32kb' }));
+  app.use(express.json({ limit: '2mb' }));
 
-  // CORS: solo los origenes autorizados.
+  // CORS: solo los orígenes autorizados.
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin && opts.allowedOrigins.includes(origin)) {
@@ -53,37 +58,39 @@ export function createApp(opts: AppOptions): express.Express {
     } else if (origin) {
       return res.status(403).json({ ok: false, error: 'Origen no permitido' });
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
     res.setHeader('Access-Control-Max-Age', '600');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
 
-  // Identidad: token de Firebase valido y correo en la lista de acceso.
+  /** Sesión de NEUROPAY válida y correo en la lista de acceso. */
   async function requireUser(req: express.Request, res: express.Response, next: express.NextFunction) {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+    const token = bearerToken(req);
     if (!token) {
-      return res.status(401).json({ ok: false, error: 'Falta el token de autenticación.' });
+      return res.status(401).json({ ok: false, error: 'Falta la sesión. Vuelve a entrar.' });
     }
 
-    let user: AuthUser;
+    let user: SessionUser | null;
     try {
-      user = await opts.verifyToken(token);
-    } catch {
-      return res.status(401).json({ ok: false, error: 'Token inválido o expirado.' });
+      user = await opts.sessions.find(token);
+    } catch (e) {
+      return sendError(res, e);
     }
-
+    if (!user) {
+      return res.status(401).json({ ok: false, error: 'Tu sesión expiró. Vuelve a entrar.' });
+    }
     if (!isEmailAllowed(user.email, opts.allowedEmails)) {
-      return res.status(403).json({ ok: false, error: 'Tu cuenta no tiene acceso a la sincronización con Gmail.' });
+      return res.status(403).json({ ok: false, error: 'Tu cuenta no tiene acceso a NEUROPAY.' });
     }
 
-    res.locals.uid = user.uid;
+    res.locals.user = user;
     next();
   }
 
-  const uidOf = (res: express.Response): string => res.locals.uid as string;
+  const userOf = (res: express.Response): SessionUser => res.locals.user as SessionUser;
+  const uidOf = (res: express.Response): string => userOf(res).uid;
 
   function sendError(res: express.Response, e: unknown) {
     if (e instanceof AccountLimitError) {
@@ -94,15 +101,83 @@ export function createApp(opts: AppOptions): express.Express {
       return res.status(500).json({ ok: false, error: 'Error interno al leer las cuentas conectadas.' });
     }
     const message = e instanceof Error ? e.message : 'Error inesperado.';
-    console.error('[gmail]', message);
+    console.error('[servidor]', message);
     return res.status(500).json({ ok: false, error: message });
   }
 
   app.get('/health', (_req, res) => {
-    res.json({ ok: true, service: 'neuropay-gmail' });
+    res.json({ ok: true, service: 'neuropay-api' });
   });
 
-  /** Cuentas conectadas del usuario. Sin tokens. */
+  /** Confirma la cuenta de Google y abre una sesión de NEUROPAY. */
+  app.post('/auth/google', async (req, res) => {
+    const idToken = typeof req.body?.idToken === 'string' ? req.body.idToken : '';
+    if (!idToken) {
+      return res.status(400).json({ ok: false, error: 'Falta la confirmación de Google.' });
+    }
+
+    let identity: GoogleIdentity;
+    try {
+      identity = await opts.verifyGoogleIdToken(idToken);
+    } catch {
+      return res
+        .status(401)
+        .json({ ok: false, error: 'No se pudo confirmar tu cuenta de Google. Vuelve a intentarlo.' });
+    }
+    if (!identity.email || !identity.emailVerified) {
+      return res.status(403).json({ ok: false, error: 'Tu correo de Google no está verificado.' });
+    }
+    if (!isEmailAllowed(identity.email, opts.allowedEmails)) {
+      return res.status(403).json({ ok: false, error: 'Tu cuenta no tiene acceso a NEUROPAY.' });
+    }
+
+    try {
+      const user: SessionUser = { uid: identity.uid, email: identity.email, name: identity.name ?? '' };
+      const session = await opts.sessions.create(user);
+      res.json({ ok: true, token: session.token, expiresAt: session.expiresAt.toISOString(), user });
+    } catch (e) {
+      sendError(res, e);
+    }
+  });
+
+  app.get('/me', requireUser, (_req, res) => {
+    res.json({ ok: true, user: userOf(res) });
+  });
+
+  app.post('/auth/logout', async (req, res) => {
+    try {
+      const token = bearerToken(req);
+      if (token) await opts.sessions.revoke(token);
+      res.json({ ok: true });
+    } catch (e) {
+      sendError(res, e);
+    }
+  });
+
+  /** Datos del usuario: movimientos, presupuestos y configuración. */
+  app.get('/data', requireUser, async (_req, res) => {
+    try {
+      const doc = await opts.userData.get(uidOf(res));
+      res.json({ ok: true, data: doc ? { ...doc.state, updatedAt: doc.updatedAt.toISOString() } : null });
+    } catch (e) {
+      sendError(res, e);
+    }
+  });
+
+  app.put('/data', requireUser, async (req, res) => {
+    const state = parseUserState(req.body);
+    if (!state) {
+      return res.status(400).json({ ok: false, error: 'Los datos no tienen el formato esperado.' });
+    }
+    try {
+      const updatedAt = await opts.userData.put(uidOf(res), state);
+      res.json({ ok: true, updatedAt: updatedAt.toISOString() });
+    } catch (e) {
+      sendError(res, e);
+    }
+  });
+
+  /** Cuentas de Gmail conectadas del usuario. Sin tokens. */
   app.get('/gmail/accounts', requireUser, async (_req, res) => {
     try {
       const accounts = await opts.store.list(uidOf(res));

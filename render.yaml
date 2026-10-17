@@ -1,9 +1,10 @@
-# Servidor de Gmail en Render (plan gratis, sin tarjeta).
-# Las cuentas se guardan en MongoDB Atlas, así que el disco efímero no importa.
-# Los valores marcados con sync: false se piden en el panel de Render y NO van aquí.
+# API de NEUROPAY en Render (plan gratis, sin tarjeta).
+# Sesiones, datos y cuentas de Gmail viven en MongoDB Atlas.
+# La web sigue en Firebase Hosting. Los valores marcados con sync: false se piden
+# en el panel de Render y NO van aquí.
 services:
   - type: web
-    name: neuropay-gmail
+    name: neuropay-api
     runtime: node
     plan: free
     buildCommand: npm ci
@@ -14,10 +15,6 @@ services:
         value: "22"
       - key: ALLOWED_ORIGINS
         value: https://neuropay-2fc4d.web.app,https://neuropay-2fc4d.firebaseapp.com,http://localhost:3000
-      - key: FIREBASE_PROJECT_ID
-        value: neuropay-2fc4d
-      - key: FIREBASE_API_KEY
-        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -26,5 +23,5 @@ services:
         sync: false
       - key: MONGODB_URI
         sync: false
-      - key: GMAIL_ALLOWED_EMAILS
+      - key: ALLOWED_EMAILS
         sync: false

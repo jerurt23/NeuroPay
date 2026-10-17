@@ -23,13 +23,19 @@ import {
   CategoryInfo,
   WidgetConfig,
 } from './types/index.ts';
-import { auth, db } from './lib/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { getLocalData, saveLocalData } from './lib/localDb';
+import { getLocalData, saveLocalData, findLegacyLocalData } from './lib/localDb';
+import {
+  fetchRemoteData,
+  fetchSessionUser,
+  getSessionToken,
+  saveRemoteData,
+  signOutSession,
+  type DataSnapshot,
+  type SessionUser,
+} from './lib/session';
 
 export default function App() {
-  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
 
   const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
@@ -63,8 +69,11 @@ export default function App() {
   }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const isRemoteSync = useRef(false);
+  // isLoaded: los datos del navegador ya están cargados (se puede guardar en el navegador).
+  // isRemoteReady: los datos de la nube ya se leyeron (solo entonces se suben cambios a MongoDB).
   const isLoaded = useRef(false);
+  const isRemoteReady = useRef(false);
+  const remoteSaveTimer = useRef<number | null>(null);
 
   // Temperatura de color (similar a True Tone). Se aplica como capa de
   // tinte translucida, no como filtro CSS: ver nota en index.css.
@@ -82,111 +91,110 @@ export default function App() {
     document.documentElement.style.setProperty('--truetone-filter', filter);
   }, [settings.trueTone, tempTint]);
 
+  // Al abrir la web se comprueba si hay una sesión guardada.
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-      setAuthReady(true);
-    });
-    return () => unsub();
+    let cancelado = false;
+    fetchSessionUser()
+      .then((user) => {
+        if (!cancelado) setSessionUser(user);
+      })
+      .catch(() => {
+        // Sin servidor: se muestra el inicio de sesión.
+      })
+      .finally(() => {
+        if (!cancelado) setAuthReady(true);
+      });
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
-  // Load data from local DB. Firebase is only used if billing is enabled.
+  // Al entrar: primero los datos del navegador (siempre disponibles) y luego los de la nube.
   useEffect(() => {
-    if (!firebaseUser) return;
-    const userId = firebaseUser.uid;
+    if (!sessionUser) return;
+    const usuario: SessionUser = sessionUser;
+    let cancelado = false;
+    isLoaded.current = false;
+    isRemoteReady.current = false;
 
-    getLocalData(userId).then((local) => {
-      if (local) {
-        if (local.settings) setSettings({ ...INITIAL_SETTINGS, ...local.settings });
-        if (local.transactions) setTransactions(local.transactions);
-        if (local.budgets) setBudgets(local.budgets);
-        if (local.tabs) setTabs(local.tabs);
-        if (local.widgets) setWidgets(local.widgets);
-      } else {
-        // Primera vez: persistir los datos iniciales
-        saveLocalData({
-          id: userId,
+    const aplicar = (datos: DataSnapshot) => {
+      if (datos.settings) setSettings({ ...INITIAL_SETTINGS, ...datos.settings });
+      if (datos.transactions) setTransactions(datos.transactions);
+      if (datos.budgets) setBudgets(datos.budgets);
+      if (datos.tabs) setTabs(datos.tabs);
+      if (datos.widgets) setWidgets(datos.widgets);
+      setSettings((prev) => ({
+        ...prev,
+        userName: usuario.name || prev.userName,
+        userEmail: usuario.email,
+      }));
+    };
+
+    (async () => {
+      const local: DataSnapshot =
+        (await getLocalData(usuario.uid)) ??
+        (await findLegacyLocalData(usuario.uid)) ?? {
           settings: INITIAL_SETTINGS,
           transactions: [],
           budgets: [],
           tabs: INITIAL_TABS,
           widgets: INITIAL_WIDGETS,
-        });
-      }
-      // Marcar como cargado DESPUÉS de aplicar los datos (evita sobrescribir)
+        };
+      if (cancelado) return;
+      aplicar(local);
       isLoaded.current = true;
-    });
 
-    // Firebase solo si el proyecto tiene billing. Sin billing la promesa
-    // falla y el callback de error deja la app funcionando con la BD local.
-    const ref = doc(db, 'users', userId);
-    const unsub = onSnapshot(ref, (snap) => {
-      isRemoteSync.current = true;
-      if (snap.exists()) {
-        const data = snap.data() as any;
-        if (data.settings && Object.keys(data.settings).length > 0) {
-          setSettings({ ...INITIAL_SETTINGS, ...data.settings });
+      try {
+        const nube = await fetchRemoteData(getSessionToken());
+        if (cancelado) return;
+        if (nube) {
+          aplicar(nube);
+        } else {
+          // Primera vez en la nube: se sube lo que hay en este navegador.
+          await saveRemoteData(getSessionToken(), local);
         }
-        if (data.transactions && data.transactions.length > 0) {
-          setTransactions(data.transactions);
-        }
-        if (data.budgets && data.budgets.length > 0) {
-          setBudgets(data.budgets);
-        }
-        if (data.tabs && data.tabs.length > 0) setTabs(data.tabs);
-        if (data.widgets && data.widgets.length > 0) setWidgets(data.widgets);
+        isRemoteReady.current = true;
+      } catch {
+        // Sin conexión: se usan los datos del navegador. No se sube nada hasta
+        // poder leer la nube, para no pisar datos más recientes.
       }
-      setTimeout(() => (isRemoteSync.current = false), 0);
-    }, (err) => {
-      console.warn('Firebase no disponible (sin billing). Usando base de datos local.', err?.code || err);
-    });
+    })();
 
-    return () => unsub();
-  }, [firebaseUser]);
+    return () => {
+      cancelado = true;
+    };
+  }, [sessionUser]);
 
-  // Persist on changes (Firebase + IndexedDB local)
-  const persist = useCallback(async () => {
-    if (!firebaseUser || isRemoteSync.current || !isLoaded.current) return;
+  // Cada cambio se guarda en el navegador. Si la nube ya se leyó, también se sube a MongoDB,
+  // con una pausa de 1.2 s para no enviar una petición por cada cambio.
+  useEffect(() => {
+    if (!sessionUser || !isLoaded.current) return;
+    const datos: DataSnapshot = { settings, transactions, budgets, tabs, widgets };
+    void saveLocalData({ id: sessionUser.uid, ...datos });
+    if (!isRemoteReady.current) return;
+    if (remoteSaveTimer.current) window.clearTimeout(remoteSaveTimer.current);
+    remoteSaveTimer.current = window.setTimeout(() => {
+      saveRemoteData(getSessionToken(), datos).catch(() => undefined);
+    }, 1200);
+  }, [sessionUser, settings, transactions, budgets, tabs, widgets]);
 
-    const userId = firebaseUser.uid;
-
-    // Guardar TODO en una sola escritura (evita condiciones de carrera)
-    await saveLocalData({
-      id: userId,
-      settings,
-      transactions,
-      budgets,
-      tabs,
-      widgets,
-    });
-
-    // Intentar guardar en Firebase (solo funciona con billing)
-    try {
-      const ref = doc(db, 'users', userId);
-      await setDoc(ref, { settings, transactions, budgets, tabs, widgets }, { merge: true });
-    } catch {
-      // Sin billing: los datos ya quedaron guardados en localStorage
-    }
-  }, [firebaseUser, settings, transactions, budgets, tabs, widgets]);
-
-  // Un solo efecto: persiste cuando cualquier dato cambia
-  useEffect(() => { persist(); }, [persist]);
-
-  const handleLogin = (user: { uid: string; displayName: string; email: string }) => {
-    setSettings((prev) => ({ ...prev, userName: user.displayName, userEmail: user.email }));
-  };
+  const handleLogin = useCallback((user: SessionUser) => {
+    setSessionUser(user);
+  }, []);
 
   const handleLogout = async () => {
     // NO se borra la base de datos local: se conserva para que al
     // volver a iniciar sesión el usuario recupere todos sus datos.
-    await signOut(auth);
-    setFirebaseUser(null);
+    await signOutSession();
+    if (remoteSaveTimer.current) window.clearTimeout(remoteSaveTimer.current);
+    setSessionUser(null);
     setSettings(INITIAL_SETTINGS);
     setTransactions([]);
     setBudgets([]);
     setTabs(INITIAL_TABS);
     setWidgets(INITIAL_WIDGETS);
     isLoaded.current = false;
+    isRemoteReady.current = false;
   };
 
   const handleSaveTransaction = (newTx: Transaction) => {
@@ -203,7 +211,7 @@ export default function App() {
     return <div className="min-h-screen flex items-center justify-center text-zinc-500">Cargando...</div>;
   }
 
-  if (!firebaseUser) {
+  if (!sessionUser) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
@@ -215,7 +223,7 @@ export default function App() {
 
     <div className="true-tone-layer min-h-screen flex flex-col surface-page text-main">
       <HeaderNav
-        userName={settings.userName || firebaseUser.displayName || ''}
+        userName={settings.userName || sessionUser.name || ''}
         userPhoto={settings.userPhoto}
         unreadCount={0}
         onOpenNotifications={() => {}}
@@ -308,7 +316,10 @@ export default function App() {
           setSettings((prev) => ({ ...prev, accountPassword: newP }));
           return true;
         }}
-        getIdToken={() => (firebaseUser ? firebaseUser.getIdToken() : Promise.reject(new Error('No hay sesión activa.')))}
+        getIdToken={() => {
+          const token = getSessionToken();
+          return token ? Promise.resolve(token) : Promise.reject(new Error('No hay sesión activa.'));
+        }}
         onImportTransactions={(txs) => setTransactions((prev) => [...txs, ...prev])}
         onDeleteCustomCategory={(id, deriveTo) => {
           const cat = settings.customCategories?.find((c) => c.id === id);
