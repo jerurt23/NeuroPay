@@ -25,12 +25,26 @@ Salvo `/health`, `/auth/google` y `/auth/logout`, todos requieren `Authorization
 | POST | `/auth/google` | Cambia la confirmación de Google por una sesión. Body: `{ idToken }` |
 | POST | `/auth/logout` | Cierra la sesión |
 | GET | `/me` | Usuario de la sesión |
-| GET | `/data` | Movimientos, presupuestos y configuración guardados |
-| PUT | `/data` | Guarda movimientos, presupuestos y configuración |
+| GET | `/data` | Movimientos, presupuestos y configuración guardados, con su `version` |
+| PUT | `/data` | Guarda los cambios. Body: `{ baseVersion, data }`. Si otro dispositivo guardó antes responde **409** con `{ version, data }` para fusionar |
 | GET | `/gmail/accounts` | Cuentas de Gmail conectadas (sin tokens) |
 | POST | `/gmail/accounts` | Conecta una cuenta. Body: `{ code, redirectUri }` |
 | DELETE | `/gmail/accounts/:id` | Quita una cuenta |
 | POST | `/gmail/sync` | Busca avisos en todas las cuentas |
+
+## Sincronización entre dispositivos
+
+Cada documento de datos lleva una `version`. El navegador envía la versión que
+conocía (`baseVersion`):
+
+- Si coincide, se guarda y la versión sube en 1.
+- Si no coincide, otro dispositivo guardó antes: el servidor responde **409** con
+  la versión actual y su contenido. El navegador fusiona en tres vías (base
+  compartida, su estado local y la nube) y vuelve a guardar. Nunca se pisa un
+  cambio.
+
+La fusión está en `src/lib/cloudSync.ts` y está probada en `test:sync-e2e`, que
+simula dos dispositivos contra la base real.
 
 ## Configuración
 
@@ -67,6 +81,7 @@ En el plan gratis, el servidor se duerme tras 15 minutos sin uso. La primera pet
 npx tsx server/test-backend.ts   # almacén de cuentas y lectura de correos
 npm run test:mongo               # almacén de cuentas contra MongoDB (requiere MONGODB_URI)
 npm run test:flow                # flujo completo contra MongoDB (requiere MONGODB_URI)
+npm run test:sync-e2e            # dos dispositivos simultáneos contra MongoDB
 ```
 
 ## Pendiente
