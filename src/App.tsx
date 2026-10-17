@@ -25,7 +25,8 @@ import {
 } from './types/index.ts';
 import { getLocalData, saveLocalData, findLegacyLocalData } from './lib/localDb';
 import { cloudApi, fetchSessionUser, getSessionToken, signOutSession, type SessionUser } from './lib/session';
-import { createCloudSyncer, type CloudSyncer, type SyncState } from './lib/cloudSync';
+import { createCloudSyncer, resetRemote, type CloudSyncer, type SyncState } from './lib/cloudSync';
+import { listGmailAccounts, removeGmailAccount } from './lib/gmail';
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
@@ -61,6 +62,8 @@ export default function App() {
     setActiveTab('registro');
   }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  // Al reiniciar se cambia la clave para que Registro empiece limpio (sin filas pendientes).
+  const [resetCount, setResetCount] = useState(0);
 
   // isLoaded: los datos del navegador ya están cargados. Solo entonces se guarda y se sincroniza.
   const isLoaded = useRef(false);
@@ -204,6 +207,34 @@ export default function App() {
     setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
   };
 
+  // Borra todo en la nube y en este dispositivo. Devuelve un aviso si Gmail no se pudo desconectar.
+  const handleResetAll = async (): Promise<string | null> => {
+    const token = getSessionToken();
+    if (!sessionUser || !token) throw new Error('No hay sesión activa.');
+    const vacio: SyncState = {
+      settings: { ...INITIAL_SETTINGS, userName: settings.userName, userEmail: settings.userEmail },
+      transactions: [],
+      budgets: [],
+      tabs: INITIAL_TABS,
+      widgets: INITIAL_WIDGETS,
+    };
+    // Primero la nube: si falla, este dispositivo no cambia.
+    await resetRemote({ uid: sessionUser.uid, vacio, storage: window.localStorage, api: cloudApi });
+    aplicarEstado(vacio);
+    setResetCount((n) => n + 1);
+    try {
+      const lista = await listGmailAccounts(token);
+      if (!lista.ok) throw new Error(lista.error);
+      for (const cuenta of lista.data.accounts) {
+        const quitada = await removeGmailAccount(cuenta.id, token);
+        if (!quitada.ok) throw new Error(quitada.error);
+      }
+      return null;
+    } catch {
+      return 'Se borraron tus datos, pero no se pudieron desconectar las cuentas de Gmail. Revísalas en "Sincronizar con correo".';
+    }
+  };
+
   if (!authReady) {
     return <div className="min-h-screen flex items-center justify-center text-zinc-500">Cargando...</div>;
   }
@@ -254,6 +285,7 @@ export default function App() {
 
         {activeTab === 'registro' && (
           <RegistroView
+            key={resetCount}
             transactions={transactions}
             categories={allCategories}
             currencySymbol={settings.currencySymbol}
@@ -327,6 +359,7 @@ export default function App() {
             return { ...prev, customCategories: (prev.customCategories || []).filter((c) => c.id !== id), dashboardGroups: groups };
           });
         }}
+        onResetAll={handleResetAll}
         onLogout={handleLogout}
       />
     </div>

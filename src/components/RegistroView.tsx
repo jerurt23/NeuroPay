@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, History, Save, Check, Loader2, Trash2, Pencil, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
+import { parseDecimal } from '../lib/money.ts';
 
 interface RegistroViewProps {
   transactions: Transaction[];
@@ -73,6 +74,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [customItem, setCustomItem] = useState('');
   const [amount, setAmount] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState<UnitType>('unidades');
   const [origin, setOrigin] = useState('');
@@ -146,6 +148,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
   const incomeLocked = protectEnabled && !!gatePassword && !unlocked;
 
+  // Solo al elegir una categoría: si la nube actualiza las categorías mientras se escribe,
+  // no deben borrarse los campos que la persona ya llenó.
   useEffect(() => {
     const cc = (customCategories || []).find((c: any) => c.id === mainCategory);
     if (cc) {
@@ -154,7 +158,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       setIncludeDate(cc.includeDate ?? true);
       setCustomValues({});
     }
-  }, [mainCategory, customCategories]);
+  }, [mainCategory]);
 
   const handleCreateCategory = () => {
     if (!customTitle.trim() || customFieldDefs.length === 0) return;
@@ -208,8 +212,18 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
   const handleAddToList = () => {
     const isNewOrCustom = mainCategory === 'nueva' || !!(customCategories || []).find((c: any) => c.id === mainCategory);
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseDecimal(amount);
     if (!isNewOrCustom && (isNaN(parsedAmount) || parsedAmount <= 0)) return;
+    const montoInvalido = customFieldDefs.some((f: any) =>
+      f.type === 'float' &&
+      String(customValues[f.id] ?? '').trim() !== '' &&
+      Number.isNaN(parseDecimal(String(customValues[f.id])))
+    );
+    if (isNewOrCustom && montoInvalido) {
+      setFormError('Revisa el monto: escribe solo números, por ejemplo 12.50 o 12,50.');
+      return;
+    }
+    setFormError(null);
     if (mainCategory === 'ingresos' && incomeLocked) return;
 
     let itemName = '';
@@ -274,8 +288,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
       category,
       subcategory: subcat,
       itemName,
-      amount: (mainCategory === 'nueva' || !!(customCategories || []).find((c: any) => c.id === mainCategory)) ? customFieldDefs.filter((f: any) => f.type === 'float').reduce((s: number, f: any) => s + (parseFloat(customValues[f.id]) || 0), 0) : parsedAmount,
-      quantity: parseFloat(quantity) || 1,
+      amount: (mainCategory === 'nueva' || !!(customCategories || []).find((c: any) => c.id === mainCategory)) ? customFieldDefs.filter((f: any) => f.type === 'float').reduce((s: number, f: any) => s + (parseDecimal(String(customValues[f.id] ?? '')) || 0), 0) : parsedAmount,
+      quantity: parseDecimal(quantity) || 1,
       unit,
       date: new Date().toISOString().split('T')[0],
       txType,
@@ -360,7 +374,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
 
   const handleSaveAll = () => saveItems(pendingItems);
 
-  const canAdd = amount && parseFloat(amount) > 0 && (
+  const canAdd = amount && parseDecimal(amount) > 0 && (
     (mainCategory === 'comida' && (selectedItem || customItem || newItemName || customTitle)) ||
     (mainCategory === 'transporte' && origin && destination) ||
     (mainCategory === 'medicina' && medicineName) ||
@@ -468,8 +482,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Monto</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={editAmount}
               onChange={(e) => setEditAmount(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
@@ -500,7 +514,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 const updated: Transaction = {
                   ...editingTx,
                   title: editTitle || editingTx.title,
-                  amount: parseFloat(editAmount) || editingTx.amount,
+                  amount: parseDecimal(editAmount) || editingTx.amount,
                   date: editDate || editingTx.date,
                 };
                 onUpdateTransaction?.(updated);
@@ -631,9 +645,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                 <label className="text-xs font-medium text-muted mb-1 block">Cantidad y Unidad</label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    min="0"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     className="flex-1 px-3 py-2.5 rounded-l-xl bg-white border border-line text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
@@ -660,8 +673,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               <div>
                 <label className="text-xs font-medium text-muted mb-1 block">Precio unitario ({currencySymbol})</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -681,7 +694,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                       <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                       {amount && (
                         <span className="text-sm font-bold text-blue-600">
-                          {currencySymbol}{parseFloat(amount).toFixed(2)}
+                          {currencySymbol}{parseDecimal(amount).toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -719,8 +732,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">Precio ({currencySymbol})</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -739,7 +752,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
-                      {currencySymbol}{parseFloat(amount).toFixed(2)}
+                      {currencySymbol}{parseDecimal(amount).toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -791,8 +804,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">Precio ({currencySymbol})</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -811,7 +824,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-blue-600">
-                      {currencySymbol}{parseFloat(amount).toFixed(2)}
+                      {currencySymbol}{parseDecimal(amount).toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -837,8 +850,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
           <div>
             <label className="text-xs font-medium text-muted mb-1 block">Monto ({currencySymbol})</label>
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -857,7 +870,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   <span className="text-sm text-muted line-through">{currencySymbol}{lastHistory.amount.toFixed(2)}</span>
                   {amount && (
                     <span className="text-sm font-bold text-emerald-600">
-                      {currencySymbol}{parseFloat(amount).toFixed(2)}
+                      {currencySymbol}{parseDecimal(amount).toFixed(2)}
                     </span>
                   )}
                 </div>
@@ -1028,8 +1041,8 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                     )}
                     {f.type === 'float' && (
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={customValues[f.id] ?? ''}
                         onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm"
@@ -1049,6 +1062,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   </div>
                 );
               })}
+              {formError && <p className="text-xs text-rose-500">{formError}</p>}
               <button
                 type="button"
                 onClick={handleAddToList}
@@ -1192,7 +1206,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
                   <input type="number" step="1" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
                 )}
                 {f.type === 'float' && (
-                  <input type="number" step="0.01" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
+                  <input type="text" inputMode="decimal" value={customValues[f.id] ?? ''} onChange={(e) => setCustomValues(v => ({ ...v, [f.id]: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-line text-sm" />
                 )}
                 {f.type === 'boolean' && (
                   <label className="flex items-center gap-2 text-sm text-muted">
@@ -1203,6 +1217,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
               </div>
             );
           })}
+          {formError && <p className="text-xs text-rose-500">{formError}</p>}
           <button
             type="button"
             onClick={handleAddToList}

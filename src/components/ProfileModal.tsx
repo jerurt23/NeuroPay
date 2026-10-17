@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Layers, PieChart, Coins, User, Trash2, Mail } from 'lucide-react';
+import { X, Upload, Lock, Key, LogOut, Check, Camera, ChevronDown, ChevronUp, BarChart3, LineChart, Layers, PieChart, Coins, User, Trash2, Mail, RotateCcw } from 'lucide-react';
 import { UserSettings, Transaction, CategoryInfo } from '../types/index.ts';
 import { GmailSyncPanel } from './GmailSyncPanel.tsx';
 
@@ -14,6 +14,8 @@ interface ProfileModalProps {
   onChangePassword: (oldP: string, newP: string) => boolean;
   onDeleteCustomCategory?: (id: string, deriveTo?: string) => void;
   onLogout: () => void;
+  /** Borra todo en la nube y en este dispositivo. Devuelve un aviso si quedó algo pendiente. */
+  onResetAll: () => Promise<string | null>;
   /** Token de sesión de NEUROPAY, para hablar con el servidor. */
   getIdToken: () => Promise<string>;
   onImportTransactions: (txs: Transaction[]) => void;
@@ -42,6 +44,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onChangePassword,
   onDeleteCustomCategory,
   onLogout,
+  onResetAll,
   getIdToken,
   onImportTransactions,
 }) => {
@@ -58,6 +61,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [confirmPass, setConfirmPass] = useState('');
   const [passMsg, setPassMsg] = useState<string | null>(null);
   const [passError, setPassError] = useState<string | null>(null);
+  const [resetTexto, setResetTexto] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetAviso, setResetAviso] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -111,6 +118,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
     setPassMsg('Contraseña cambiada correctamente.');
     setOldPass(''); setNewPass(''); setConfirmPass('');
+  };
+
+  const handleResetAll = async () => {
+    setResetError(null);
+    setResetAviso(null);
+    setResetBusy(true);
+    try {
+      const aviso = await onResetAll();
+      if (aviso) {
+        setResetAviso(aviso);
+      } else {
+        setResetTexto('');
+        onClose();
+      }
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : 'No se pudo resetear. Intenta de nuevo.');
+    } finally {
+      setResetBusy(false);
+    }
   };
 
   const isBasicOpen = true;
@@ -419,6 +445,34 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               })}
             </div>
           )}
+        </div>
+
+        {/* Reset all */}
+        <div className="rounded-2xl bg-rose-50/60 border border-rose-200 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <RotateCcw className="w-5 h-5 text-rose-500" />
+            <h3 className="font-bold text-rose-600">Reset all</h3>
+          </div>
+          <p className="text-xs text-muted">
+            Borra tus movimientos, presupuestos, categorías, ajustes, foto y las cuentas de Gmail conectadas, tanto en este dispositivo como en la nube. Tu inicio de sesión se mantiene. No se puede deshacer.
+          </p>
+          <input
+            type="text"
+            placeholder="Escribe RESET para confirmar"
+            value={resetTexto}
+            onChange={(e) => setResetTexto(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-white border border-line text-sm"
+          />
+          {resetError && <p className="text-xs text-rose-500">{resetError}</p>}
+          {resetAviso && <p className="text-xs text-amber-600">{resetAviso}</p>}
+          <button
+            type="button"
+            disabled={resetTexto.trim() !== 'RESET' || resetBusy}
+            onClick={handleResetAll}
+            className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {resetBusy ? 'Borrando...' : 'Resetear todo'}
+          </button>
         </div>
 
         {/* Logout */}

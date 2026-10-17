@@ -191,6 +191,30 @@ export async function runSync(opts: {
   throw new Error('Hubo demasiados cambios a la vez. Se reintentará.');
 }
 
+/**
+ * Reinicia la nube: escribe el estado vacío sobre la versión actual, sin fusionar,
+ * para que no vuelvan los datos borrados. Si alguien guardó antes, reintenta.
+ */
+export async function resetRemote(opts: {
+  uid: string;
+  vacio: SyncState;
+  storage: SyncStorage;
+  api: SyncApi;
+}): Promise<number> {
+  const { uid, vacio, storage, api } = opts;
+  let remoto = await api.leer();
+
+  for (let intento = 0; intento < MAX_INTENTOS; intento++) {
+    const res = await api.guardar(remoto.version, vacio);
+    if (res.ok) {
+      guardarBase(storage, uid, { version: res.version, state: vacio });
+      return res.version;
+    }
+    remoto = res.conflict;
+  }
+  throw new Error('Hubo demasiados cambios a la vez. Intenta de nuevo.');
+}
+
 export interface CloudSyncOptions {
   uid: string;
   getLocal: () => SyncState;

@@ -14,6 +14,7 @@
     "test:mongo": "tsx server/test-mongo-live.ts",
     "test:flow": "tsx server/test-flow.ts",
     "test:sync": "tsx --test src/lib/cloudSync.test.ts",
+    "test:unit": "tsx --test src/lib/cloudSync.test.ts src/lib/money.test.ts",
     "test:sync-e2e": "tsx server/test-sync-e2e.ts"
   },
   "dependencies": {

@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mergeSyncState,
+  resetRemote,
   runSync,
   same,
   type PushResult,
@@ -114,5 +115,48 @@ describe('sincronización', () => {
 
     assert.equal(resultado.version, 3);
     assert.deepEqual(ids(resultado.state.transactions), ['base', 'mio', 'otro']);
+  });
+});
+
+describe('reinicio', () => {
+  it('escribe el estado vacío sobre la versión actual y guarda la base', async () => {
+    const storage = memoria();
+    const versionesEnviadas: number[] = [];
+    const api: SyncApi = {
+      leer: async () => ({ version: 3, state: { ...vacio(), transactions: [mov('viejo')] } }),
+      guardar: async (version: number, state: SyncState): Promise<PushResult> => {
+        versionesEnviadas.push(version);
+        assert.deepEqual(state.transactions, []);
+        return { ok: true, version: version + 1 };
+      },
+    };
+
+    const version = await resetRemote({ uid: 'usuario-prueba', vacio: vacio(), storage, api });
+
+    assert.equal(version, 4);
+    assert.deepEqual(versionesEnviadas, [3]);
+    assert.deepEqual(JSON.parse(storage.getItem('neuropay_sync_usuario-prueba')!), { version: 4, state: vacio() });
+  });
+
+  it('si otro dispositivo guardó antes, reintenta sobre la versión nueva', async () => {
+    const nuevaV5: RemoteSnapshot = { version: 5, state: { ...vacio(), transactions: [mov('nuevo')] } };
+    const api: SyncApi = {
+      leer: async () => ({ version: 3, state: vacio() }),
+      guardar: async (version: number): Promise<PushResult> =>
+        version === 3 ? { ok: false, conflict: nuevaV5 } : { ok: true, version: 6 },
+    };
+
+    assert.equal(await resetRemote({ uid: 'usuario-prueba', vacio: vacio(), storage: memoria(), api }), 6);
+  });
+
+  it('si la nube no responde, no reinicia nada', async () => {
+    const api: SyncApi = {
+      leer: async () => {
+        throw new Error('sin conexión');
+      },
+      guardar: async (): Promise<PushResult> => ({ ok: true, version: 1 }),
+    };
+
+    await assert.rejects(resetRemote({ uid: 'usuario-prueba', vacio: vacio(), storage: memoria(), api }), /sin conexión/);
   });
 });
