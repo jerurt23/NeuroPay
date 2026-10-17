@@ -2,8 +2,9 @@
  * Sesión de NEUROPAY. Google confirma quién eres; el servidor abre una sesión
  * propia y el navegador guarda solo ese token. Los datos viven en MongoDB.
  */
+import { ApiError, createCloudApi } from './cloudApi';
 
-const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
+const API_URL = ((import.meta.env?.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
 const TOKEN_KEY = 'neuropay_session';
 
 export const API_CONFIGURED = Boolean(API_URL);
@@ -12,25 +13,6 @@ export interface SessionUser {
   uid: string;
   email: string;
   name: string;
-}
-
-/** Datos del usuario tal como los guarda el servidor. */
-export interface DataSnapshot {
-  settings?: any;
-  transactions?: any[];
-  budgets?: any[];
-  tabs?: any[];
-  widgets?: any[];
-  updatedAt?: string;
-}
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
 }
 
 export function getSessionToken(): string | null {
@@ -50,7 +32,7 @@ function setSessionToken(token: string | null): void {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
+async function request<T>(ruta: string, init: RequestInit = {}, token?: string | null): Promise<T> {
   if (!API_URL) throw new ApiError(0, 'El servidor de NEUROPAY no está configurado.');
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -58,16 +40,17 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string |
 
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { ...init, headers });
+    res = await fetch(`${API_URL}${ruta}`, { ...init, headers });
   } catch {
     throw new ApiError(0, 'No se pudo conectar con el servidor. Revisa tu conexión.');
   }
 
-  const data = await res.json().catch(() => null);
+  const cuerpo = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new ApiError(res.status, data?.error ?? `El servidor respondió ${res.status}.`);
+    const mensaje = (cuerpo as { error?: string } | null)?.error ?? `El servidor respondió ${res.status}.`;
+    throw new ApiError(res.status, mensaje, cuerpo);
   }
-  return data as T;
+  return cuerpo as T;
 }
 
 /** Cambia la confirmación de Google por una sesión de NEUROPAY. */
@@ -104,12 +87,5 @@ export async function signOutSession(): Promise<void> {
   }
 }
 
-/** Datos guardados en la nube. null = todavía no hay nada guardado. */
-export async function fetchRemoteData(token: string | null): Promise<DataSnapshot | null> {
-  const res = await request<{ ok: boolean; data: DataSnapshot | null }>('/data', {}, token);
-  return res.data;
-}
-
-export async function saveRemoteData(token: string | null, state: DataSnapshot): Promise<void> {
-  await request('/data', { method: 'PUT', body: JSON.stringify(state) }, token);
-}
+/** Cliente de la API para la sincronización entre dispositivos. */
+export const cloudApi = createCloudApi({ baseUrl: API_URL, getToken: getSessionToken });

@@ -22,7 +22,7 @@ import {
 } from './gmailClient.ts';
 import { parseBankEmail, isOutgoingPayment } from '../src/utils/bankEmailParser.ts';
 import type { GoogleIdentity, SessionStore, SessionUser } from './session.ts';
-import { parseUserState, type UserDataStore } from './userData.ts';
+import { parseBaseVersion, parseUserState, type UserDataStore } from './userData.ts';
 
 export interface AppOptions {
   store: AccountStore;
@@ -47,7 +47,8 @@ function bearerToken(req: express.Request): string {
 export function createApp(opts: AppOptions): express.Express {
   const app = express();
 
-  app.use(express.json({ limit: '2mb' }));
+  // Los datos completos (movimientos, configuración) pueden pesar varios megas.
+  app.use(express.json({ limit: '8mb' }));
 
   // CORS: solo los orígenes autorizados.
   app.use((req, res, next) => {
@@ -154,24 +155,41 @@ export function createApp(opts: AppOptions): express.Express {
     }
   });
 
-  /** Datos del usuario: movimientos, presupuestos y configuración. */
+  /** Datos del usuario y su versión actual. */
   app.get('/data', requireUser, async (_req, res) => {
     try {
       const doc = await opts.userData.get(uidOf(res));
-      res.json({ ok: true, data: doc ? { ...doc.state, updatedAt: doc.updatedAt.toISOString() } : null });
+      res.json({
+        ok: true,
+        version: doc?.version ?? 0,
+        data: doc ? { ...doc.state, updatedAt: doc.updatedAt.toISOString() } : null,
+      });
     } catch (e) {
       sendError(res, e);
     }
   });
 
+  /**
+   * Guarda los datos. baseVersion es la versión sobre la que se hicieron los cambios.
+   * Si otro dispositivo guardó antes, responde 409 con la versión actual para fusionarla.
+   */
   app.put('/data', requireUser, async (req, res) => {
     const state = parseUserState(req.body);
-    if (!state) {
+    const baseVersion = parseBaseVersion(req.body);
+    if (!state || baseVersion === null) {
       return res.status(400).json({ ok: false, error: 'Los datos no tienen el formato esperado.' });
     }
     try {
-      const updatedAt = await opts.userData.put(uidOf(res), state);
-      res.json({ ok: true, updatedAt: updatedAt.toISOString() });
+      const result = await opts.userData.put(uidOf(res), state, baseVersion);
+      if (result.ok) {
+        return res.json({ ok: true, version: result.version, updatedAt: result.updatedAt.toISOString() });
+      }
+      return res.status(409).json({
+        ok: false,
+        error: 'Los datos cambiaron en otro dispositivo.',
+        version: result.current?.version ?? 0,
+        data: result.current ? { ...result.current.state, updatedAt: result.current.updatedAt.toISOString() } : null,
+      });
     } catch (e) {
       sendError(res, e);
     }

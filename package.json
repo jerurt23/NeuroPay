@@ -12,7 +12,9 @@
     "server": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
     "test:mongo": "tsx server/test-mongo-live.ts",
-    "test:flow": "tsx server/test-flow.ts"
+    "test:flow": "tsx server/test-flow.ts",
+    "test:sync": "tsx --test src/lib/cloudSync.test.ts",
+    "test:sync-e2e": "tsx server/test-sync-e2e.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

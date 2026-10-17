@@ -1,6 +1,7 @@
 /**
  * Datos del usuario (movimientos, presupuestos, configuración...) guardados en MongoDB.
- * Se guardan como texto JSON para no depender de los nombres de los campos.
+ * Cada guardado sube una versión. Si el dispositivo trabajó sobre una versión vieja,
+ * el servidor no pisa los cambios: responde con la versión actual para fusionarla.
  */
 
 export interface UserState {
@@ -14,11 +15,16 @@ export interface UserState {
 export interface StoredUserData {
   state: UserState;
   updatedAt: Date;
+  version: number;
 }
+
+export type PutResult =
+  | { ok: true; version: number; updatedAt: Date }
+  | { ok: false; current: StoredUserData | null };
 
 export interface UserDataStore {
   get(uid: string): Promise<StoredUserData | null>;
-  put(uid: string, state: UserState): Promise<Date>;
+  put(uid: string, state: UserState, baseVersion: number): Promise<PutResult>;
 }
 
 const lista = (valor: unknown): unknown[] | null =>
@@ -44,4 +50,11 @@ export function parseUserState(body: unknown): UserState | null {
     tabs,
     widgets,
   };
+}
+
+/** Versión sobre la que se hizo el cambio: un entero mayor o igual que 0. */
+export function parseBaseVersion(body: unknown): number | null {
+  if (!body || typeof body !== 'object') return null;
+  const version = (body as Record<string, unknown>).baseVersion;
+  return typeof version === 'number' && Number.isInteger(version) && version >= 0 ? version : null;
 }

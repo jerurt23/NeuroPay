@@ -24,15 +24,8 @@ import {
   WidgetConfig,
 } from './types/index.ts';
 import { getLocalData, saveLocalData, findLegacyLocalData } from './lib/localDb';
-import {
-  fetchRemoteData,
-  fetchSessionUser,
-  getSessionToken,
-  saveRemoteData,
-  signOutSession,
-  type DataSnapshot,
-  type SessionUser,
-} from './lib/session';
+import { cloudApi, fetchSessionUser, getSessionToken, signOutSession, type SessionUser } from './lib/session';
+import { createCloudSyncer, type CloudSyncer, type SyncState } from './lib/cloudSync';
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
@@ -69,11 +62,17 @@ export default function App() {
   }, []);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // isLoaded: los datos del navegador ya están cargados (se puede guardar en el navegador).
-  // isRemoteReady: los datos de la nube ya se leyeron (solo entonces se suben cambios a MongoDB).
+  // isLoaded: los datos del navegador ya están cargados. Solo entonces se guarda y se sincroniza.
   const isLoaded = useRef(false);
-  const isRemoteReady = useRef(false);
-  const remoteSaveTimer = useRef<number | null>(null);
+  // Copia del estado que el motor de sincronización lee sin esperar al render.
+  const estadoRef = useRef<SyncState>({
+    settings: INITIAL_SETTINGS,
+    transactions: [],
+    budgets: [],
+    tabs: INITIAL_TABS,
+    widgets: INITIAL_WIDGETS,
+  });
+  const syncerRef = useRef<CloudSyncer | null>(null);
 
   // Temperatura de color (similar a True Tone). Se aplica como capa de
   // tinte translucida, no como filtro CSS: ver nota en index.css.
@@ -90,6 +89,22 @@ export default function App() {
         : 'none';
     document.documentElement.style.setProperty('--truetone-filter', filter);
   }, [settings.trueTone, tempTint]);
+
+  // Muestra un estado completo en pantalla y lo deja listo para la sincronización.
+  const aplicarEstado = (s: SyncState) => {
+    const completo: SyncState = { ...s, settings: { ...INITIAL_SETTINGS, ...s.settings } };
+    estadoRef.current = completo;
+    setSettings(completo.settings as UserSettings);
+    setTransactions(completo.transactions as Transaction[]);
+    setBudgets(completo.budgets as Budget[]);
+    setTabs(completo.tabs as TabConfig[]);
+    setWidgets(completo.widgets as WidgetConfig[]);
+  };
+
+  // Mantiene la copia que usa la sincronización igual a lo que se ve en pantalla.
+  useEffect(() => {
+    estadoRef.current = { settings, transactions, budgets, tabs, widgets } as SyncState;
+  }, [settings, transactions, budgets, tabs, widgets]);
 
   // Al abrir la web se comprueba si hay una sesión guardada.
   useEffect(() => {
@@ -109,73 +124,57 @@ export default function App() {
     };
   }, []);
 
-  // Al entrar: primero los datos del navegador (siempre disponibles) y luego los de la nube.
+  // Al entrar: primero los datos del navegador (siempre disponibles) y después el
+  // motor de sincronización, que trae los cambios hechos en otros dispositivos.
   useEffect(() => {
     if (!sessionUser) return;
     const usuario: SessionUser = sessionUser;
     let cancelado = false;
     isLoaded.current = false;
-    isRemoteReady.current = false;
-
-    const aplicar = (datos: DataSnapshot) => {
-      if (datos.settings) setSettings({ ...INITIAL_SETTINGS, ...datos.settings });
-      if (datos.transactions) setTransactions(datos.transactions);
-      if (datos.budgets) setBudgets(datos.budgets);
-      if (datos.tabs) setTabs(datos.tabs);
-      if (datos.widgets) setWidgets(datos.widgets);
-      setSettings((prev) => ({
-        ...prev,
-        userName: usuario.name || prev.userName,
-        userEmail: usuario.email,
-      }));
-    };
 
     (async () => {
-      const local: DataSnapshot =
-        (await getLocalData(usuario.uid)) ??
-        (await findLegacyLocalData(usuario.uid)) ?? {
-          settings: INITIAL_SETTINGS,
-          transactions: [],
-          budgets: [],
-          tabs: INITIAL_TABS,
-          widgets: INITIAL_WIDGETS,
-        };
+      const local = (await getLocalData(usuario.uid)) ?? (await findLegacyLocalData(usuario.uid));
       if (cancelado) return;
-      aplicar(local);
+      aplicarEstado({
+        settings: {
+          ...(local?.settings ?? {}),
+          userName: usuario.name || local?.settings?.userName || '',
+          userEmail: usuario.email,
+        },
+        transactions: local?.transactions ?? [],
+        budgets: local?.budgets ?? [],
+        tabs: local?.tabs ?? INITIAL_TABS,
+        widgets: local?.widgets ?? INITIAL_WIDGETS,
+      });
       isLoaded.current = true;
 
-      try {
-        const nube = await fetchRemoteData(getSessionToken());
-        if (cancelado) return;
-        if (nube) {
-          aplicar(nube);
-        } else {
-          // Primera vez en la nube: se sube lo que hay en este navegador.
-          await saveRemoteData(getSessionToken(), local);
-        }
-        isRemoteReady.current = true;
-      } catch {
-        // Sin conexión: se usan los datos del navegador. No se sube nada hasta
-        // poder leer la nube, para no pisar datos más recientes.
-      }
+      const syncer = createCloudSyncer({
+        uid: usuario.uid,
+        getLocal: () => estadoRef.current,
+        applyRemote: aplicarEstado,
+        storage: window.localStorage,
+        api: cloudApi,
+        onSessionExpired: () => {
+          void handleLogout();
+        },
+      });
+      syncerRef.current = syncer;
+      syncer.schedule(0);
     })();
 
     return () => {
       cancelado = true;
+      syncerRef.current?.dispose();
+      syncerRef.current = null;
     };
   }, [sessionUser]);
 
-  // Cada cambio se guarda en el navegador. Si la nube ya se leyó, también se sube a MongoDB,
-  // con una pausa de 1.2 s para no enviar una petición por cada cambio.
+  // Cada cambio se guarda en el navegador y pide una sincronización con MongoDB
+  // (con una pausa corta para agrupar varios cambios seguidos).
   useEffect(() => {
     if (!sessionUser || !isLoaded.current) return;
-    const datos: DataSnapshot = { settings, transactions, budgets, tabs, widgets };
-    void saveLocalData({ id: sessionUser.uid, ...datos });
-    if (!isRemoteReady.current) return;
-    if (remoteSaveTimer.current) window.clearTimeout(remoteSaveTimer.current);
-    remoteSaveTimer.current = window.setTimeout(() => {
-      saveRemoteData(getSessionToken(), datos).catch(() => undefined);
-    }, 1200);
+    void saveLocalData({ id: sessionUser.uid, settings, transactions, budgets, tabs, widgets });
+    syncerRef.current?.schedule(1500);
   }, [sessionUser, settings, transactions, budgets, tabs, widgets]);
 
   const handleLogin = useCallback((user: SessionUser) => {
@@ -186,7 +185,6 @@ export default function App() {
     // NO se borra la base de datos local: se conserva para que al
     // volver a iniciar sesión el usuario recupere todos sus datos.
     await signOutSession();
-    if (remoteSaveTimer.current) window.clearTimeout(remoteSaveTimer.current);
     setSessionUser(null);
     setSettings(INITIAL_SETTINGS);
     setTransactions([]);
@@ -194,7 +192,6 @@ export default function App() {
     setTabs(INITIAL_TABS);
     setWidgets(INITIAL_WIDGETS);
     isLoaded.current = false;
-    isRemoteReady.current = false;
   };
 
   const handleSaveTransaction = (newTx: Transaction) => {

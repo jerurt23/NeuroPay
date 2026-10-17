@@ -21,7 +21,7 @@ import {
   type SessionStore,
   type SessionUser,
 } from './session.ts';
-import type { UserDataStore, UserState } from './userData.ts';
+import type { PutResult, StoredUserData, UserDataStore, UserState } from './userData.ts';
 
 export type UserDoc = {
   _id: string;
@@ -41,6 +41,7 @@ type DataDoc = {
   _id: string;
   data: string;
   updatedAt: Date;
+  version: number;
 };
 
 const DB_NAME = 'neuropay';
@@ -142,23 +143,37 @@ export function createSessionCollectionStore(col: Collection<SessionDoc>): Sessi
   };
 }
 
-/** Datos del usuario: un documento por usuario, con los datos como texto JSON. */
+/** Datos del usuario: un documento por usuario, con los datos como texto JSON y su versión. */
 export function createUserDataCollectionStore(col: Collection<DataDoc>): UserDataStore {
-  return {
-    async get(uid) {
-      const doc = await col.findOne({ _id: uid });
-      if (!doc) return null;
-      return { state: JSON.parse(doc.data) as UserState, updatedAt: doc.updatedAt };
-    },
+  const leer = async (uid: string): Promise<StoredUserData | null> => {
+    const doc = await col.findOne({ _id: uid });
+    if (!doc) return null;
+    return { state: JSON.parse(doc.data) as UserState, updatedAt: doc.updatedAt, version: doc.version };
+  };
 
-    async put(uid, state) {
+  return {
+    get: leer,
+
+    async put(uid, state, baseVersion): Promise<PutResult> {
       const updatedAt = new Date();
-      await col.updateOne(
-        { _id: uid },
-        { $set: { data: JSON.stringify(state), updatedAt } },
-        { upsert: true }
-      );
-      return updatedAt;
+      const data = JSON.stringify(state);
+
+      if (baseVersion === 0) {
+        try {
+          await col.insertOne({ _id: uid, data, updatedAt, version: 1 });
+          return { ok: true, version: 1, updatedAt };
+        } catch (e) {
+          if ((e as { code?: number }).code !== DUPLICATE_KEY) throw e;
+        }
+      } else {
+        const res = await col.updateOne(
+          { _id: uid, version: baseVersion },
+          { $set: { data, updatedAt }, $inc: { version: 1 } }
+        );
+        if (res.matchedCount === 1) return { ok: true, version: baseVersion + 1, updatedAt };
+      }
+
+      return { ok: false, current: await leer(uid) };
     },
   };
 }

@@ -84,7 +84,7 @@ async function main(connectionUri: string) {
     check('/me con sesión: 200', me.status === 200 && me.body?.user?.uid === uid);
 
     const vacio = await pedir('/data', peticion('GET', token));
-    check('/data sin datos guardados: data null', vacio.status === 200 && vacio.body?.data === null);
+    check('/data sin datos guardados: data null y versión 0', vacio.status === 200 && vacio.body?.data === null && vacio.body?.version === 0);
 
     const datos = {
       settings: { userName: 'Prueba' },
@@ -93,18 +93,28 @@ async function main(connectionUri: string) {
       tabs: [],
       widgets: [],
     };
-    const guardar = await pedir('/data', peticion('PUT', token, datos));
-    check('PUT /data guarda los datos', guardar.status === 200 && typeof guardar.body?.updatedAt === 'string');
+    const guardar = await pedir('/data', peticion('PUT', token, { baseVersion: 0, ...datos }));
+    check('primer guardado crea la versión 1', guardar.status === 200 && guardar.body?.version === 1);
 
     const leer = await pedir('/data', peticion('GET', token));
     check(
-      'GET /data devuelve lo guardado',
+      'GET /data devuelve lo guardado y la versión',
       leer.status === 200 &&
+        leer.body?.version === 1 &&
         leer.body?.data?.transactions?.length === 1 &&
         leer.body?.data?.settings?.userName === 'Prueba'
     );
 
-    const invalido = await pedir('/data', peticion('PUT', token, { settings: 'x', transactions: [] }));
+    const nuevo = await pedir('/data', peticion('PUT', token, { baseVersion: 1, ...datos, transactions: [{ id: 't2', amount: 5 }] }));
+    check('guardar sobre la versión actual sube a la 2', nuevo.status === 200 && nuevo.body?.version === 2);
+
+    const obsoleto = await pedir('/data', peticion('PUT', token, { baseVersion: 1, ...datos }));
+    check(
+      'guardar con una versión vieja da 409 y devuelve lo actual',
+      obsoleto.status === 409 && obsoleto.body?.version === 2 && obsoleto.body?.data?.transactions?.[0]?.id === 't2'
+    );
+
+    const invalido = await pedir('/data', peticion('PUT', token, { baseVersion: 2, settings: 'x', transactions: [] }));
     check('PUT /data con formato inválido: 400', invalido.status === 400);
 
     check(
