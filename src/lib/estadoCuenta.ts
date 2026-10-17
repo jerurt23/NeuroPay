@@ -21,8 +21,21 @@ export interface ControlBanco {
   abonos: number;
 }
 
+export interface AbonoEstado {
+  fecha: string;
+  descripcion: string;
+  monto: number;
+}
+
 export type ResultadoParseo =
-  | { ok: true; gastos: GastoEstado[]; cargos: number; abonos: number; controlBanco: ControlBanco | null }
+  | {
+      ok: true;
+      gastos: GastoEstado[];
+      abonosDetalle: AbonoEstado[];
+      cargos: number;
+      abonos: number;
+      controlBanco: ControlBanco | null;
+    }
   | { ok: false; error: string };
 
 export class ClaveRequerida extends Error {
@@ -150,22 +163,24 @@ export function parsearEstadoCuenta(paginas: ItemPdf[][], existentes: Transactio
   const anio = anioDelPeriodo(items);
   const gastos: GastoEstado[] = [];
   let abonos = 0;
+  const abonosDetalle: AbonoEstado[] = [];
 
   for (const fila of paginas.flatMap(filasDe)) {
     if (!FECHA_CORTA.test(fila[0]?.s ?? '')) continue;
     const monto = [...fila].reverse().find((i) => MONTO.test(i.s));
     if (!monto) continue;
-    const valor = aNumero(monto.s);
-    if (monto.x + monto.ancho >= corte) {
-      abonos += valor;
-      continue;
-    }
     const mes = MESES[fila[0].s.slice(2)];
     if (!mes) continue;
+    const valor = aNumero(monto.s);
     const fecha = `${anio}-${mes}-${fila[0].s.slice(0, 2)}`;
     const descripcion = textoDe(
       fila.slice(1).filter((i) => i !== monto && i.s !== '*' && !FECHA_CORTA.test(i.s))
     );
+    if (monto.x + monto.ancho >= corte) {
+      abonos += valor;
+      abonosDetalle.push({ fecha, descripcion, monto: valor });
+      continue;
+    }
     gastos.push({
       fecha,
       descripcion,
@@ -186,8 +201,30 @@ export function parsearEstadoCuenta(paginas: ItemPdf[][], existentes: Transactio
     gastos,
     cargos: redondear(gastos.reduce((suma, g) => suma + g.monto, 0)),
     abonos: redondear(abonos),
+    abonosDetalle,
     controlBanco: controlDelBanco(items, corte),
   };
+}
+
+/** Abonos de ese monto exacto. Sirven para empezar a subir desde el día que llegó un sueldo, por ejemplo. */
+export function buscarAbonos(abonos: AbonoEstado[], monto: number): AbonoEstado[] {
+  return abonos.filter((a) => Math.abs(a.monto - monto) < 0.005);
+}
+
+/** Primera y última fecha de los gastos (YYYY-MM-DD). */
+export function rangoCompleto(gastos: GastoEstado[]): { desde: string; hasta: string } {
+  const fechas = gastos.map((g) => g.fecha).sort();
+  return { desde: fechas[0] ?? '', hasta: fechas[fechas.length - 1] ?? '' };
+}
+
+/** Índices de los gastos cuya fecha está entre desde y hasta, ambas incluidas. */
+export function indicesEnRango(gastos: GastoEstado[], desde: string, hasta: string): number[] {
+  return gastos.flatMap((g, i) => (g.fecha >= desde && g.fecha <= hasta ? [i] : []));
+}
+
+/** Lo que viene marcado al elegir un rango: los gastos del rango que no están ya registrados. */
+export function seleccionInicial(gastos: GastoEstado[], desde: string, hasta: string): number[] {
+  return indicesEnRango(gastos, desde, hasta).filter((i) => !gastos[i].posibleDuplicado);
 }
 
 /** Convierte los gastos elegidos en movimientos de NEUROPAY. */

@@ -1,6 +1,15 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { gastosATransacciones, parsearEstadoCuenta, type ItemPdf } from './estadoCuenta.ts';
+import {
+  buscarAbonos,
+  gastosATransacciones,
+  indicesEnRango,
+  parsearEstadoCuenta,
+  rangoCompleto,
+  seleccionInicial,
+  type GastoEstado,
+  type ItemPdf,
+} from './estadoCuenta.ts';
 import type { Transaction } from '../types/index.ts';
 
 const t = (x: number, y: number, ancho: number, s: string): ItemPdf => ({ x, y, ancho, s });
@@ -78,5 +87,46 @@ describe('lectura del estado de cuenta', () => {
     assert.equal(movimientos[0].id, 'est_lote-prueba_0');
     assert.equal(movimientos[0].date, '2026-09-02');
     assert.equal(movimientos[0].amount, 12.2);
+  });
+});
+
+describe('rango de fechas', () => {
+  const gasto = (fecha: string, duplicado = false): GastoEstado => ({
+    fecha,
+    descripcion: 'x',
+    monto: 1,
+    categoria: 'otro',
+    posibleDuplicado: duplicado,
+  });
+  const gastos = [gasto('2026-09-01'), gasto('2026-09-10'), gasto('2026-09-15', true), gasto('2026-09-30')];
+
+  it('toma la primera y la última fecha como rango completo', () => {
+    assert.deepEqual(rangoCompleto(gastos), { desde: '2026-09-01', hasta: '2026-09-30' });
+  });
+
+  it('incluye los extremos del rango y deja fuera lo demás', () => {
+    assert.deepEqual(indicesEnRango(gastos, '2026-09-10', '2026-09-15'), [1, 2]);
+    assert.deepEqual(indicesEnRango(gastos, '2026-09-02', '2026-09-09'), []);
+  });
+
+  it('marca por defecto solo los gastos del rango que no están registrados', () => {
+    assert.deepEqual(seleccionInicial(gastos, '2026-09-01', '2026-09-30'), [0, 1, 3]);
+  });
+});
+
+describe('abonos como punto de partida', () => {
+  it('guarda los abonos con su fecha y monto', () => {
+    const r = parsearEstadoCuenta([pagina]);
+    if (!r.ok) assert.fail(r.error);
+    assert.equal(r.abonosDetalle.length, 1);
+    assert.equal(r.abonosDetalle[0].fecha, '2026-09-04');
+    assert.equal(r.abonosDetalle[0].monto, 750);
+  });
+
+  it('encuentra el abono por su monto exacto', () => {
+    const r = parsearEstadoCuenta([pagina]);
+    if (!r.ok) assert.fail(r.error);
+    assert.deepEqual(buscarAbonos(r.abonosDetalle, 750).map((a) => a.fecha), ['2026-09-04']);
+    assert.deepEqual(buscarAbonos(r.abonosDetalle, 751), []);
   });
 });
