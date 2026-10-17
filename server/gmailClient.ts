@@ -44,6 +44,11 @@ function required(name: string): string {
   return value;
 }
 
+/** ID de cliente: el del servidor o, si no se define, el del frontend (VITE_*). */
+function googleClientId(): string {
+  return process.env.GOOGLE_CLIENT_ID || required('VITE_GOOGLE_CLIENT_ID');
+}
+
 async function postToken(body: URLSearchParams) {
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -69,7 +74,7 @@ export async function exchangeCode(code: string, redirectUri: string): Promise<T
   const build = (redirect: string) =>
     new URLSearchParams({
       code,
-      client_id: required('GOOGLE_CLIENT_ID'),
+      client_id: googleClientId(),
       client_secret: required('GOOGLE_CLIENT_SECRET'),
       redirect_uri: redirect,
       grant_type: 'authorization_code',
@@ -91,7 +96,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
   const r = await postToken(
     new URLSearchParams({
       refresh_token: refreshToken,
-      client_id: required('GOOGLE_CLIENT_ID'),
+      client_id: googleClientId(),
       client_secret: required('GOOGLE_CLIENT_SECRET'),
       grant_type: 'refresh_token',
     })
