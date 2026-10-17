@@ -5,6 +5,7 @@ import {
   coincideReferencia,
   movimientosATransacciones,
   parsearEstadoCuenta,
+  periodoDe,
   type ItemPdf,
   type MovimientoEstado,
 } from './estadoCuenta.ts';
@@ -123,6 +124,16 @@ describe('búsqueda por condiciones', () => {
 
   it('sin referencia busca solo por tipo y monto', () => {
     assert.equal(buscarMovimientos(r.movimientos, { tipo: 'egreso', monto: 7.8, referencia: '' }).length, 1);
+  });
+
+  it('sin monto ni referencia trae todos los del tipo dentro del rango', () => {
+    const hallados = buscarMovimientos(r.movimientos, { tipo: 'egreso', referencia: '', desde: '2026-09-03', hasta: '2026-09-05' });
+    assert.deepEqual(hallados.map((m) => m.fecha), ['2026-09-03', '2026-09-05']);
+    assert.equal(buscarMovimientos(r.movimientos, { tipo: 'egreso', referencia: '' }).length, 3);
+  });
+
+  it('el periodo del estado va de la primera a la última fecha', () => {
+    assert.deepEqual(periodoDe(r.movimientos), { desde: '2026-09-02', hasta: '2026-09-05' });
   });
 });
 

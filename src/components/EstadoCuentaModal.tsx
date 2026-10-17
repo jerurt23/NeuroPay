@@ -7,6 +7,7 @@ import {
   ClaveRequerida,
   movimientosATransacciones,
   parsearEstadoCuenta,
+  periodoDe,
   type MovimientoEstado,
   type ResultadoParseo,
   type TipoMovimiento,
@@ -51,6 +52,7 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
   const [referencia, setReferencia] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const [resumenBusqueda, setResumenBusqueda] = useState('');
   const [hallados, setHallados] = useState<MovimientoEstado[]>([]);
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
@@ -70,6 +72,7 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
     setReferencia('');
     setDesde('');
     setHasta('');
+    setResumenBusqueda('');
     setHallados([]);
     setMarcados(new Set());
     setConfirmando(false);
@@ -119,13 +122,31 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
   };
 
   const monto = parseDecimal(montoTexto);
-  const montoValido = !Number.isNaN(monto) && monto > 0;
+  const montoIndicado = montoTexto.trim() !== '';
+  const montoValido = !montoIndicado || (!Number.isNaN(monto) && monto > 0);
   const rangoValido = !desde || !hasta || desde <= hasta;
+  const periodo = resultado ? periodoDe(resultado.movimientos) : null;
+  const fueraDelPeriodo =
+    !!periodo && ((!!desde && desde < periodo.desde) || (!!hasta && hasta > periodo.hasta));
   const puedeBuscar = !!tipo && montoValido && rangoValido;
 
   const buscar = () => {
     if (!resultado || !tipo) return;
-    const encontrados = buscarMovimientos(resultado.movimientos, { tipo, monto, referencia, desde, hasta });
+    const encontrados = buscarMovimientos(resultado.movimientos, {
+      tipo,
+      monto: montoIndicado ? monto : undefined,
+      referencia,
+      desde,
+      hasta,
+    });
+    const resumen = [
+      montoIndicado ? `de ${currencySymbol} ${formato(monto)}` : '',
+      referencia.trim() ? `con la referencia "${referencia.trim()}"` : '',
+      desde || hasta ? 'en ese rango de fechas' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    setResumenBusqueda(resumen);
     setHallados(encontrados);
     setMarcados(new Set(encontrados.flatMap((m, i) => (m.posibleDuplicado ? [] : [i]))));
     setConfirmando(false);
@@ -215,12 +236,13 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
           </div>
         )}
 
-        {paso === 'condiciones' && resultado && (
+        {paso === 'condiciones' && resultado && periodo && (
           <div className="space-y-4">
             <p className="text-xs text-muted">
               Leí {resultado.movimientos.length} movimientos (
               {resultado.movimientos.filter((m) => m.tipo === 'ingreso').length} ingresos y{' '}
-              {resultado.movimientos.filter((m) => m.tipo === 'egreso').length} egresos).
+              {resultado.movimientos.filter((m) => m.tipo === 'egreso').length} egresos). El estado cubre del{' '}
+              {diaMes(periodo.desde)} al {diaMes(periodo.hasta)}.
               {cuadraConBanco === true && ' Coinciden con los totales que imprime el banco.'}
               {cuadraConBanco === false && ' No coinciden con los totales del banco; revisa antes de subir.'}
             </p>
@@ -242,7 +264,7 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
             {tipo && (
               <>
                 <label className="block text-xs font-medium text-muted space-y-1">
-                  {etiquetas.monto}
+                  {etiquetas.monto} (opcional)
                   <input
                     type="text"
                     inputMode="decimal"
@@ -252,6 +274,9 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
                     className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-line text-sm"
                   />
                 </label>
+                {!montoValido && (
+                  <p className="text-xs text-rose-500">Escribe un monto válido o deja el campo vacío.</p>
+                )}
                 <label className="block text-xs font-medium text-muted space-y-1">
                   {etiquetas.referencia} (opcional)
                   <input
@@ -289,6 +314,12 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
               {!rangoValido && (
                 <p className="text-xs text-rose-500">La fecha inicial debe ser igual o anterior a la final.</p>
               )}
+              {rangoValido && fueraDelPeriodo && (
+                <p className="text-xs text-amber-600">
+                  Tu rango no coincide con el periodo del estado ({diaMes(periodo.desde)} al{' '}
+                  {diaMes(periodo.hasta)}).
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -304,12 +335,13 @@ export const EstadoCuentaModal: React.FC<EstadoCuentaModalProps> = ({
           </div>
         )}
 
-        {paso === 'resultados' && resultado && !confirmando && (
+        {paso === 'resultados' && resultado && periodo && !confirmando && (
           <div className="space-y-3">
             {hallados.length === 0 ? (
               <p className="text-sm text-main">
-                No encontré ningún {tipo === 'ingreso' ? 'ingreso' : 'egreso'} de {currencySymbol} {formato(monto)} con
-                esas condiciones. Prueba con otra referencia o amplía el rango.
+                No encontré ningún {tipo === 'ingreso' ? 'ingreso' : 'egreso'}
+                {resumenBusqueda ? ` ${resumenBusqueda}` : ''}. El estado cubre del {diaMes(periodo.desde)} al{' '}
+                {diaMes(periodo.hasta)}.
               </p>
             ) : (
               <>

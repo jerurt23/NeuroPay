@@ -27,7 +27,7 @@ export interface ControlBanco {
 /** Lo que indica la persona para encontrar un movimiento dentro del estado. */
 export interface Condiciones {
   tipo: TipoMovimiento;
-  monto: number;
+  monto?: number;
   referencia: string;
   desde?: string;
   hasta?: string;
@@ -227,12 +227,21 @@ export function coincideReferencia(descripcion: string, referencia: string): boo
     .every((palabra) => texto.includes(palabra));
 }
 
-/** Movimientos que cumplen las condiciones: tipo, monto exacto, referencia y rango de fechas (si se indica). */
+/** Primera y última fecha con movimientos: el periodo que cubre el estado (YYYY-MM-DD). */
+export function periodoDe(movimientos: MovimientoEstado[]): { desde: string; hasta: string } {
+  const fechas = movimientos.map((m) => m.fecha).sort();
+  return { desde: fechas[0] ?? '', hasta: fechas[fechas.length - 1] ?? '' };
+}
+
+/**
+ * Movimientos que cumplen las condiciones. Tipo es obligatorio; monto, referencia y rango
+ * son opcionales y, si no se indican, no filtran.
+ */
 export function buscarMovimientos(movimientos: MovimientoEstado[], c: Condiciones): MovimientoEstado[] {
   return movimientos.filter(
     (m) =>
       m.tipo === c.tipo &&
-      Math.abs(m.monto - c.monto) < 0.005 &&
+      (c.monto === undefined || Math.abs(m.monto - c.monto) < 0.005) &&
       coincideReferencia(m.descripcion, c.referencia) &&
       (!c.desde || m.fecha >= c.desde) &&
       (!c.hasta || m.fecha <= c.hasta)
