@@ -14,7 +14,7 @@
     "test:mongo": "tsx server/test-mongo-live.ts",
     "test:flow": "tsx server/test-flow.ts",
     "test:sync": "tsx --test src/lib/cloudSync.test.ts",
-    "test:unit": "tsx --test src/lib/cloudSync.test.ts src/lib/money.test.ts",
+    "test:unit": "tsx --test src/lib/cloudSync.test.ts src/lib/money.test.ts src/lib/estadoCuenta.test.ts",
     "test:sync-e2e": "tsx server/test-sync-e2e.ts"
   },
   "dependencies": {
@@ -26,6 +26,7 @@
     "lucide-react": "^0.546.0",
     "mongodb": "^7.7.0",
     "motion": "^12.23.24",
+    "pdfjs-dist": "^6.4.299",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tsx": "^4.21.0",

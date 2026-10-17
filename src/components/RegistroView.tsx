@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, History, Save, Check, Loader2, Trash2, Pencil, Scale, ChevronDown, ChevronUp, Lock, Shield } from 'lucide-react';
+import { Plus, History, Save, Check, Loader2, Trash2, Pencil, Scale, ChevronDown, ChevronUp, Lock, Shield, FileText } from 'lucide-react';
 import { Transaction, CategoryInfo } from '../types/index.ts';
 import { parseDecimal } from '../lib/money.ts';
+import { EstadoCuentaModal } from './EstadoCuentaModal.tsx';
 
 interface RegistroViewProps {
   transactions: Transaction[];
@@ -75,6 +76,7 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
   const [customItem, setCustomItem] = useState('');
   const [amount, setAmount] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [estadoAbierto, setEstadoAbierto] = useState(false);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState<UnitType>('unidades');
   const [origin, setOrigin] = useState('');
@@ -440,6 +442,21 @@ export const RegistroView: React.FC<RegistroViewProps> = ({
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setEstadoAbierto(true)}
+          className="w-full py-4 rounded-2xl border-2 border-dashed border-blue-300 text-blue-600 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
+        >
+          <FileText className="w-4 h-4" />
+          Comparar Est. Cuenta
+        </button>
+        <EstadoCuentaModal
+          open={estadoAbierto}
+          onClose={() => setEstadoAbierto(false)}
+          existentes={transactions}
+          currencySymbol={currencySymbol}
+          onConfirm={(movimientos) => movimientos.forEach((m) => onSave(m))}
+        />
       </div>
     );
   }
