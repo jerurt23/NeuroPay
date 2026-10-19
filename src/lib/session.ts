@@ -6,6 +6,8 @@ import { ApiError, createCloudApi } from './cloudApi';
 
 const API_URL = ((import.meta.env?.VITE_API_URL as string | undefined) ?? '').replace(/\/$/, '');
 const TOKEN_KEY = 'neuropay_session';
+/** Última sesión conocida: sirve para abrir la base local aunque no haya internet. */
+const USER_KEY = 'neuropay_session_user';
 
 export const API_CONFIGURED = Boolean(API_URL);
 
@@ -29,6 +31,26 @@ function setSessionToken(token: string | null): void {
     else localStorage.removeItem(TOKEN_KEY);
   } catch {
     /* sin almacenamiento, la sesión dura solo mientras la pestaña esté abierta */
+  }
+}
+
+function guardarUsuario(user: SessionUser | null): void {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(USER_KEY);
+  } catch {
+    /* sin almacenamiento no hay sesión que conservar sin conexión */
+  }
+}
+
+function usuarioGuardado(): SessionUser | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const u = JSON.parse(raw) as Partial<SessionUser>;
+    return u.uid ? { uid: u.uid, email: u.email ?? '', name: u.name ?? '' } : null;
+  } catch {
+    return null;
   }
 }
 
@@ -60,6 +82,7 @@ export async function exchangeGoogleCredential(credential: string): Promise<Sess
     body: JSON.stringify({ idToken: credential }),
   });
   setSessionToken(res.token);
+  guardarUsuario(res.user);
   return res.user;
 }
 
@@ -69,11 +92,19 @@ export async function fetchSessionUser(): Promise<SessionUser | null> {
   if (!token) return null;
   try {
     const res = await request<{ ok: boolean; user: SessionUser }>('/me', {}, token);
+    guardarUsuario(res.user);
     return res.user;
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
       setSessionToken(null);
+      guardarUsuario(null);
       return null;
+    }
+    // Sin conexión (o servidor dormido): se abre con la última sesión conocida
+    // para que los datos locales del navegador estén disponibles igualmente.
+    if (e instanceof ApiError && e.status === 0) {
+      const guardado = usuarioGuardado();
+      if (guardado) return guardado;
     }
     throw e;
   }
@@ -82,6 +113,7 @@ export async function fetchSessionUser(): Promise<SessionUser | null> {
 export async function signOutSession(): Promise<void> {
   const token = getSessionToken();
   setSessionToken(null);
+  guardarUsuario(null);
   if (token) {
     await request('/auth/logout', { method: 'POST' }, token).catch(() => undefined);
   }
