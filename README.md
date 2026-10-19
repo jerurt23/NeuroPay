@@ -104,8 +104,9 @@ Se reemplazó el login de Firebase por **Google Identity Services** (`b1119b8`):
 1. El navegador pide una confirmación a Google (botón "Continuar con Google").
 2. El servidor la verifica con `google-auth-library`, contra las claves públicas
    de Google.
-3. El servidor comprueba que el correo esté en `ALLOWED_EMAILS`. **Lista vacía
-   significa que nadie puede entrar**.
+3. El servidor comprueba el correo contra `ALLOWED_EMAILS`. Si esa variable está
+   vacía, entra **cualquier cuenta de Google verificada** (el filtro lo pone
+   Google con sus *usuarios de prueba*). Si tiene correos, solo esos entran.
 4. El servidor emite su propia sesión de 30 días. En el navegador queda solo el
    token; en la base de datos solo su **huella SHA-256**.
 
@@ -278,6 +279,7 @@ npm run test:mongo      # almacén de cuentas contra MongoDB
   compartieron en el chat de trabajo.
 - La categoría de los movimientos del PDF se deduce del comercio; casi todo cae
   en "otro". Falta poder editarla al importar.
-- Los usuarios nuevos se agregó en `ALLOWED_EMAILS` (Render). Para que usen
-  Gmail además deben estar en **Usuarios de prueba** de Google o con la app
-  publicada.
+- Para que entren más personas: agrégalas como **Usuarios de prueba** en la
+  pantalla de consentimiento de Google (hasta 100). Si `ALLOWED_EMAILS` (Render)
+  queda vacío, con eso basta: entra cualquier cuenta de Google verificada y cada
+  una ve solo sus propios datos.

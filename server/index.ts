@@ -64,7 +64,7 @@ async function main(uri: string) {
       console.warn(`⚠️  Faltan variables de entorno: ${missing.join(', ')}`);
     }
     if (ALLOWED_EMAILS.length === 0) {
-      console.warn('⚠️  ALLOWED_EMAILS está vacío: nadie podrá entrar.');
+      console.log('ℹ️  ALLOWED_EMAILS está vacío: puede entrar cualquier cuenta de Google verificada.');
     }
   });
 }

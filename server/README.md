@@ -12,7 +12,7 @@ Las cuentas de Gmail, las sesiones y los datos se guardan cifrados en **MongoDB 
 ## Inicio de sesión
 
 1. Entras con tu cuenta de Google en la web. Google confirma tu correo.
-2. El servidor verifica esa confirmación y revisa que tu correo esté en `ALLOWED_EMAILS`.
+2. El servidor verifica esa confirmación y revisa el correo contra `ALLOWED_EMAILS`: con correos, solo esos entran; si está vacía, entra cualquier cuenta de Google verificada.
 3. Si todo está bien, abre una sesión de NEUROPAY (30 días). El navegador guarda solo ese token; en la base de datos solo se guarda su huella.
 
 ## Endpoints
@@ -69,7 +69,7 @@ En el plan gratis, el servidor se duerme tras 15 minutos sin uso. La primera pet
 
 ## Seguridad
 
-- Solo los correos de `ALLOWED_EMAILS` pueden entrar y usar Gmail.
+- `ALLOWED_EMAILS` limita quién entra y usa Gmail. **Vacío = entra cualquier cuenta de Google verificada**; el filtro lo pone Google con sus *usuarios de prueba*.
 - Un correo de Google sin verificar no entra.
 - Tokens de Gmail cifrados con AES-256-GCM.
 - Sesiones con huella SHA-256; caducan a los 30 días.

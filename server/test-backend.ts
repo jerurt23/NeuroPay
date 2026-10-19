@@ -92,11 +92,14 @@ async function main() {
   const htmlOnly = { mimeType: 'text/html', body: { data: Buffer.from('<p>Pagaste <b>S/ 9.00</b></p>').toString('base64url') } };
   check('si solo hay HTML, se quitan las etiquetas', extractPlainText(htmlOnly) === 'Pagaste S/ 9.00');
   check(
-    'lista de acceso: solo los correos autorizados (sin distinguir mayusculas)',
+    'lista de acceso: con lista, solo los correos autorizados (sin distinguir mayusculas)',
     isEmailAllowed('tu@gmail.com', ['Tu@Gmail.com']) &&
       !isEmailAllowed('tu@gmail.com', ['otro@gmail.com']) &&
-      !isEmailAllowed('tu@gmail.com', []) &&
       !isEmailAllowed(undefined, ['tu@gmail.com'])
+  );
+  check(
+    'lista de acceso: lista vacia deja entrar a cualquier correo verificado',
+    isEmailAllowed('cualquiera@gmail.com', []) && !isEmailAllowed(undefined, [])
   );
 
   rmSync(dir, { recursive: true, force: true });

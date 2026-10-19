@@ -105,9 +105,13 @@ export function readRefreshToken(
   return { email: acc.email, refreshToken: decrypt(acc.refreshToken) };
 }
 
-/** Solo pueden usar Gmail los correos de la lista. Lista vacia = nadie. */
+/**
+ * Solo pueden entrar los correos de la lista. Lista vacia = entra cualquier
+ * cuenta de Google verificada (el filtro lo hace Google con sus usuarios de prueba).
+ */
 export function isEmailAllowed(email: string | undefined, allowed: string[]): boolean {
   if (!email) return false;
+  if (allowed.length === 0) return true;
   const target = email.toLowerCase();
   return allowed.some((e) => e.trim().toLowerCase() === target);
 }
